@@ -1,27 +1,37 @@
 import os
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
+from typing import Dict
 from datetime import datetime
 
 class SanctionAgent:
-    def generate_sanction_letter(self, customer_data, loan_data):
-        # Create folder if not exists
-        folder = "sanction_letters"
-        os.makedirs(folder, exist_ok=True)
+    """
+    Generates a simple sanction letter (text file) and returns path.
+    """
 
-        # File path inside folder
-        filename = f"sanction_letter_{customer_data['name'].replace(' ', '_')}.pdf"
-        file_path = os.path.join(folder, filename)
+    def __init__(self):
+        if not os.path.exists("sanctions"):
+            os.makedirs("sanctions")
 
-        c = canvas.Canvas(file_path, pagesize=A4)
+    def generate_sanction_letter(self, customer_data: Dict, loan_application: Dict) -> str:
+        name = customer_data.get("name", "Customer")
+        amount = loan_application.get("amount", 0)
+        tenure = loan_application.get("tenure", 0)
+        emi = loan_application.get("emi", 0)
+        rate = loan_application.get("rate", 0.0)
 
-        c.drawString(100, 800, "SmartLoan AI - Loan Sanction Letter")
-        c.drawString(100, 780, f"Name: {customer_data['name']}")
-        c.drawString(100, 760, f"Loan Amount: ₹{loan_data['amount']:,}")
-        c.drawString(100, 740, f"Tenure: {loan_data['tenure']} months")
-        c.drawString(100, 720, f"Interest Rate: {loan_data['rate']}%")
-        c.drawString(100, 700, f"EMI: ₹{loan_data['emi']:,}")
-        c.drawString(100, 680, f"Sanction Date: {datetime.now().strftime('%d %B %Y')}")
+        filename = f"sanction_{name}_{int(datetime.utcnow().timestamp())}.txt".replace(" ", "_")
+        path = os.path.join("sanctions", filename)
 
-        c.save()
-        return file_path
+        content = (
+            f"Sanction Letter\n\n"
+            f"Name: {name}\n"
+            f"Loan Amount: ₹{amount}\n"
+            f"Tenure (months): {tenure}\n"
+            f"EMI: ₹{emi}\n"
+            f"Interest rate: {rate}% p.a.\n\n"
+            f"This is a system-generated sanction letter.\n"
+        )
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        return path

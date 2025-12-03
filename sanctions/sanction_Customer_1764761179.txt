@@ -1,0 +1,9 @@
+Sanction Letter
+
+Name: Customer
+Loan Amount: ₹0
+Tenure (months): 0
+EMI: ₹0
+Interest rate: 0.0% p.a.
+
+This is a system-generated sanction letter.
