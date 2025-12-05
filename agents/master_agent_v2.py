@@ -1,12 +1,13 @@
 from typing import Dict
 from langchain_community.llms import HuggingFaceHub
-import os
+import os , re
 from agents.underwriting_agent import UnderwritingAgent
 from agents.sanction_agent import SanctionAgent
 from services.credit_bureau import CreditBureauAPI
 from services.offer_mart import OfferMartService
 from agents.verification_agent import VerificationAgent
 from services.crm_service import CRMService
+from agents.sales_agent import SalesAgent
 from PyPDF2 import PdfReader
 
 class MasterAgent:
@@ -20,6 +21,7 @@ class MasterAgent:
         self.agent_name = "Master Agent"
         self.current_stage = "welcome"
         self.pending_sanction = False
+        self.sales_stage = 0
 
         # Initialize services & worker agents
         self.crm = CRMService()
@@ -28,18 +30,30 @@ class MasterAgent:
         self.underwriter = UnderwritingAgent(self.credit_bureau, self.offer_mart)
         self.sanction_agent = SanctionAgent()
         self.verification = VerificationAgent(self.crm)
+        self.sales_agent = SalesAgent()
         #self.crm = crm
 
         # Initialize LLM
         self.llm = self._init_llm()
 
     def _init_llm(self):
-        os.environ["HUGGINGFACEHUB_API_TOKEN"] = "Your hugging face token here"
-        return HuggingFaceHub(
-            repo_id="meta-llama/Llama-2-7b-chat-hf",
-            model_kwargs={"temperature": 0.7, "max_length": 256},
-            task="text-generation"
+        """Use a local lightweight conversational model — no token needed."""
+        from transformers import pipeline
+        return pipeline(
+            "text-generation",
+            model="microsoft/DialoGPT-medium",
+            max_new_tokens=120,
+            temperature=0.8
         )
+
+
+    #def _init_llm(self):
+    #    os.environ["HUGGINGFACEHUB_API_TOKEN"] = "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"
+    #    return HuggingFaceHub(
+     #       repo_id="meta-llama/Llama-2-7b-chat-hf",
+    #        model_kwargs={"temperature": 0.7, "max_length": 256},
+     #       task="text-generation"
+     #   )
 
     def _extract_name(self, message: str) -> str:
         words = message.split()
@@ -64,11 +78,60 @@ class MasterAgent:
             self.current_stage = "get_phone"
             return f"Nice to meet you, {name}! 😊 Please enter your registered mobile number."
 
-        # ✅ Stage 2: Ask phone
+         #✅ Stage 2: Ask phone
+        #if self.current_stage == "get_phone":
+        #    session["customer_data"]["phone"] = user_message
+        #    self.current_stage = "get_purpose"
+        #    return "Great! What is the purpose of your loan? (Education / Wedding / Home Renovation etc)"
+
         if self.current_stage == "get_phone":
-            session["customer_data"]["phone"] = user_message
-            self.current_stage = "get_purpose"
-            return "Great! What is the purpose of your loan? (Education / Wedding / Home Renovation etc)"
+           session["customer_data"]["phone"] = user_message
+           self.current_stage = "sales_chat"
+           return (
+               "Perfect! 📞 Your number is verified.\n"
+               "Let’s chat with our Sales Agent to understand your needs better 💬\n"
+               "What brings you here today — home renovation, business, wedding, or something else?"
+           )
+
+        #🧠 Stage: Sales negotiation / persuasion phase
+        if self.current_stage == "sales_chat":
+            #Track number of turns inside sales discussion
+           self.sales_stage += 1
+
+            #STEP 1: First message — assess needs
+           if self.sales_stage == 1:
+               response = self.sales_agent.assess_needs(user_message, session)
+               return response
+
+            #STEP 2: Ask for amount
+           elif self.sales_stage == 2:
+               response = self.sales_agent.discuss_amount(user_message, session)
+               return response
+
+            #STEP 3: Ask for tenure
+           elif self.sales_stage == 3:
+               response = self.sales_agent.discuss_tenure(user_message, session)
+               return response
+
+            #STEP 4: Handle objections or confirmation
+           elif self.sales_stage == 4:
+               if any(word in user_message.lower() for word in ["yes", "ok", "proceed", "apply"]):
+                   self.current_stage = "get_purpose"
+                   return (
+                       "Awesome 😎 Let's move forward with your application.\n"
+                       "What is the purpose of your loan? (Education / Wedding / Home Renovation etc)"
+                   )
+               else:
+                   response = self.sales_agent.handle_objection(user_message)
+                   response += "\n\nWould you like me to proceed with your application?"
+                   return response
+
+            #STEP 5: Final closing — automatically move on
+           elif self.sales_stage >= 5:
+               self.current_stage = "get_purpose"
+               closing = self.sales_agent.close_deal(session)
+               return f"{closing}\n\nLet's continue with your application. What is the loan purpose?"
+
 
         # ✅ Stage 3: Loan purpose
         if self.current_stage == "get_purpose":
@@ -95,6 +158,8 @@ class MasterAgent:
                 result = self.underwriter.evaluate_application(
                     session["customer_data"], session["loan_application"]
                 )
+                if "rate" in result:
+                    session["loan_application"]["rate"] = result["rate"]
 
                 msg = result["message"]
 
@@ -112,19 +177,15 @@ class MasterAgent:
 
             except:
                 return "⚠️ Please enter tenure in numbers only."
-        print("Current stage before upload:", self.current_stage)
-    
+            
         # Stage 7️⃣: Salary slip upload (simulate PDF reading)
         if self.current_stage == "await_salary":
-            print("✅ Salary slip upload stage reached.")
             try:
-                import os
-                from PyPDF2 import PdfReader
-                import re
 
                 # ✅ Ensure the file exists
-                if not os.path.exists(user_message):
-                    return f"⚠️ File not found: {user_message}"
+                filepath = user_message
+                if not os.path.exists(filepath):
+                    return f"⚠️ File not found: {filepath}"
 
                 # ✅ Extract text from PDF
                 reader = PdfReader(user_message)
@@ -167,12 +228,20 @@ class MasterAgent:
                     monthly_salary
                 )
 
+                if "rate" in result:
+                    session["loan_application"]["rate"] = result["rate"]
+
                 msg = result["message"]
                 if result["status"] == "approved":
                     # ✅ Instead of moving straight to sanction, go to verification
                     self.current_stage = "await_verification"
                     msg += "\n\n✅ Before sanctioning, we’ll need to verify your documents (PAN/Aadhaar). Please upload your PAN card PDF now."
-                    return msg
+                elif result["status"] == "rejected":
+                    self.current_stage = "done"
+                else:
+                    # e.g., needs docs or other instruction; keep user in await_salary
+                    pass
+                return msg
 
             except Exception as e:
                 return f"⚠️ Error reading salary slip: {e}"
@@ -229,4 +298,3 @@ if __name__ == "__main__":
         user = input("You: ")
         reply = agent.handle_input(user, session)
         print("Agent:", reply)
-
