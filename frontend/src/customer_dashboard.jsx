@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { Sun, Moon, Bell, Search, Globe, ChevronRight, CreditCard, FileText, HelpCircle, Calculator, Upload, ShieldCheck, Wallet, TrendingUp, Users, BookOpen, Bot } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../src/context/AuthContext"; // Import useAuth
+import { Sun, Moon, Bell, Search, ChevronRight, CreditCard, FileText, HelpCircle, Calculator, Upload, ShieldCheck, Wallet, TrendingUp, Users, Bot, LogOut } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -24,6 +25,7 @@ const languages = {
     payments: "Payment & Transactions",
     help: "Help Center",
     status: "Loan Status Tracker",
+    logout: "Logout",
   },
   hi: {
     dashboard: "डैशबोर्ड",
@@ -37,6 +39,7 @@ const languages = {
     payments: "भुगतान और लेनदेन",
     help: "हेल्प सेंटर",
     status: "लोन स्थिति ट्रैकर",
+    logout: "लॉगआउट",
   },
 };
 
@@ -47,6 +50,8 @@ const emiData = [
 ];
 
 const CustomerDashboard = () => {
+  const { user, logout } = useAuth(); // Get user from context
+  const navigate = useNavigate();
   const [theme, setTheme] = useState("dark");
   const [lang, setLang] = useState("en");
   const t = (key) => languages[lang][key];
@@ -54,6 +59,11 @@ const CustomerDashboard = () => {
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
     document.documentElement.classList.toggle("dark");
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   return (
@@ -66,25 +76,36 @@ const CustomerDashboard = () => {
       <aside className="w-72 border-r border-gray-700/40 p-6 hidden lg:flex flex-col">
         <div className="flex items-center gap-3 mb-8">
           <div className="h-10 w-10 bg-gradient-to-br from-emerald-400 to-cyan-400 rounded-xl flex items-center justify-center font-bold text-black">
-            FR
+            {user?.username?.charAt(0).toUpperCase() || 'U'}
           </div>
-          <h1 className="text-lg font-semibold">Finomic Elite</h1>
+          <div>
+            <h1 className="text-lg font-semibold">Finomic Elite</h1>
+            <p className="text-xs opacity-70">{user?.email}</p>
+          </div>
         </div>
 
         <nav className="flex-1 space-y-4 text-sm">
-          <button className="flex items-center gap-3 px-4 py-3 bg-emerald-500/20 text-emerald-400 rounded-xl">
+          <button className="flex items-center gap-3 px-4 py-3 bg-emerald-500/20 text-emerald-400 rounded-xl w-full">
             <CreditCard size={18} /> {t("dashboard")}
           </button>
-            <NavItem link="/overview" label={t("overview")} icon={<TrendingUp size={18} />} />
-            <NavItem link="/status" label={t("status")} icon={<Users size={18} />} />
-            <NavItem link="/apply" label={t("apply")} icon={<Wallet size={18} />} />
-            <NavItem link="/payments" label={t("payments")} icon={<CreditCard size={18} />} />
-            <NavItem link="/emi-tools" label={t("tools")} icon={<Calculator size={18} />} />
-            <NavItem link="/documents" label={t("documents")} icon={<FileText size={18} />} />
-            <NavItem link="/insurance" label={t("insurance")} icon={<ShieldCheck size={18} />} />
-            <NavItem label={t("offers")} icon={<TrendingUp size={18} />} />
-            <NavItem label={t("help")} icon={<HelpCircle size={18} />} />
-            <NavItem label={"Chatbot Assistant"} icon={<Bot size={18} />} />
+          <NavItem link="/overview" label={t("overview")} icon={<TrendingUp size={18} />} />
+          <NavItem link="/status" label={t("status")} icon={<Users size={18} />} />
+          <NavItem link="/apply" label={t("apply")} icon={<Wallet size={18} />} />
+          <NavItem link="/payments" label={t("payments")} icon={<CreditCard size={18} />} />
+          <NavItem link="/emi-tools" label={t("tools")} icon={<Calculator size={18} />} />
+          <NavItem link="/documents" label={t("documents")} icon={<FileText size={18} />} />
+          <NavItem link="/insurance" label={t("insurance")} icon={<ShieldCheck size={18} />} />
+          <NavItem label={t("offers")} icon={<TrendingUp size={18} />} />
+          <NavItem label={t("help")} icon={<HelpCircle size={18} />} />
+          <NavItem label={"Chatbot Assistant"} icon={<Bot size={18} />} />
+          
+          {/* Logout Button */}
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-red-500/20 text-red-400 rounded-xl w-full transition-all mt-4"
+          >
+            <LogOut size={18} /> {t("logout")}
+          </button>
         </nav>
 
         <button className="px-4 py-3 rounded-xl bg-gradient-to-r from-orange-400 to-orange-600 text-white mt-auto shadow-lg hover:opacity-90">
@@ -98,9 +119,11 @@ const CustomerDashboard = () => {
         {/* TOP BAR */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full"></div>
+            <div className="h-10 w-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
+              {user?.username?.charAt(0).toUpperCase() || 'U'}
+            </div>
             <div>
-              <p className="font-semibold">Hello, Rithika!</p>
+              <p className="font-semibold">Hello, {user?.username || 'User'}!</p>
               <p className="text-sm opacity-70">Welcome back 👋</p>
             </div>
           </div>
@@ -134,6 +157,29 @@ const CustomerDashboard = () => {
           </div>
         </header>
 
+        {/* USER INFO CARD - NEW */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 backdrop-blur-xl p-6 rounded-2xl border border-emerald-500/30"
+        >
+          <h2 className="text-lg font-semibold mb-3">Account Information</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="opacity-70">Username</p>
+              <p className="font-semibold">{user?.username || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="opacity-70">Email</p>
+              <p className="font-semibold">{user?.email || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="opacity-70">User ID</p>
+              <p className="font-semibold">#{user?.id || 'N/A'}</p>
+            </div>
+          </div>
+        </motion.div>
+
         {/* FEATURE CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           <FeatureCard icon={<Wallet />} title="Active Loan" value="₹ 15,00,000" />
@@ -155,7 +201,7 @@ const CustomerDashboard = () => {
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="value" stroke="var(--color-primary)" strokeWidth={3} />
+                <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={3} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -167,14 +213,13 @@ const CustomerDashboard = () => {
 
 // COMPONENTS
 const NavItem = ({ label, icon, link }) => (
-  <Link to={link}>
+  <Link to={link || '#'}>
     <button className="flex items-center justify-between px-4 py-3 hover:bg-white/10 rounded-xl w-full transition-all">
       <span className="flex gap-3">{icon} {label}</span>
       <ChevronRight size={16} className="opacity-50" />
     </button>
   </Link>
 );
-
 
 const FeatureCard = ({ icon, title, value }) => (
   <motion.div

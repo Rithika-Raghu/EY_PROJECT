@@ -1,14 +1,17 @@
 // src/App.jsx
 import React, { useEffect, useState } from "react";
+import { loginUser } from '../src/api/auth';
+import { signupUser } from '../src/api/auth';
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Link,
-  useNavigate,
+  useNavigate,useLocation
 } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useTheme } from "./useTheme";
+import { useAuth } from './context/AuthContext';
 
 // ------------------ Small helpers ------------------
 
@@ -618,11 +621,41 @@ function AuthShell({ title, subtitle, children }) {
   );
 }
 
-function Login() {
+export function Login() {
   const navigate = useNavigate();
-  const handle = (e) => {
+  const location = useLocation();
+  const { login } = useAuth(); // Get login function from context
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const from = location.state?.from?.pathname || '/dashboard';
+
+  const handle = async (e) => {
     e.preventDefault();
-    navigate("/");
+    setError('');
+    setLoading(true);
+
+    const formData = new FormData(e.target);
+    const credentials = {
+      email: formData.get('email'),
+      password: formData.get('password')
+    };
+
+    try {
+      const result = await loginUser(credentials);
+      console.log('Login success:', result);
+      
+      // Store user in context AND localStorage
+      login(result.user);
+      
+      // Navigate to dashboard or original destination
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err.message || 'Login failed');
+      console.error('Login error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -631,12 +664,18 @@ function Login() {
       subtitle="Access projects, journeys and analytics."
     >
       <form onSubmit={handle} className="space-y-4 text-sm">
+        {error && (
+          <div className="text-red-500 text-xs bg-red-50 dark:bg-red-900/20 p-2 rounded">
+            {error}
+          </div>
+        )}
         <div>
           <label className="text-slate-600 dark:text-slate-300 text-xs">
             Work email
           </label>
           <input
             required
+            name="email"
             type="email"
             className="w-full mt-1 px-3 py-2 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             placeholder="you@company.com"
@@ -648,6 +687,7 @@ function Login() {
           </label>
           <input
             required
+            name="password"
             type="password"
             className="w-full mt-1 px-3 py-2 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             placeholder="••••••••"
@@ -662,9 +702,10 @@ function Login() {
           </a>
           <button
             type="submit"
-            className="px-4 py-2 bg-slate-900 text-white dark:bg-indigo-500 rounded-full text-xs font-medium hover:bg-indigo-600"
+            disabled={loading}
+            className="px-4 py-2 bg-slate-900 text-white dark:bg-indigo-500 rounded-full text-xs font-medium hover:bg-indigo-600 disabled:opacity-50"
           >
-            Login
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </div>
       </form>
@@ -682,11 +723,34 @@ function Login() {
   );
 }
 
-function Signup() {
+
+export function Signup() {
   const navigate = useNavigate();
-  const handle = (e) => {
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handle = async (e) => {
     e.preventDefault();
-    navigate("/");
+    setError('');
+    setLoading(true);
+
+    const formData = new FormData(e.target);
+    const userData = {
+      username: formData.get('fullname'),
+      email: formData.get('email'),
+      password: formData.get('password')
+    };
+
+    try {
+      const result = await signupUser(userData);
+      console.log('Signup success:', result);
+      navigate('/login');
+    } catch (err) {
+      setError(err.message || 'Registration failed');
+      console.error('Signup error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -695,12 +759,18 @@ function Signup() {
       subtitle="Spin up a sandbox for experiments."
     >
       <form onSubmit={handle} className="space-y-4 text-sm">
+        {error && (
+          <div className="text-red-500 text-xs bg-red-50 dark:bg-red-900/20 p-2 rounded">
+            {error}
+          </div>
+        )}
         <div>
           <label className="text-slate-600 dark:text-slate-300 text-xs">
             Full name
           </label>
           <input
             required
+            name="fullname"
             type="text"
             className="w-full mt-1 px-3 py-2 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             placeholder="Rithika Sharma"
@@ -712,6 +782,7 @@ function Signup() {
           </label>
           <input
             required
+            name="email"
             type="email"
             className="w-full mt-1 px-3 py-2 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             placeholder="you@company.com"
@@ -723,6 +794,7 @@ function Signup() {
           </label>
           <input
             required
+            name="password"
             type="password"
             className="w-full mt-1 px-3 py-2 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             placeholder="Create a strong password"
@@ -731,9 +803,10 @@ function Signup() {
         <div className="flex items-center justify-between">
           <button
             type="submit"
-            className="px-4 py-2 bg-slate-900 text-white dark:bg-indigo-500 rounded-full text-xs font-medium hover:bg-indigo-600"
+            disabled={loading}
+            className="px-4 py-2 bg-slate-900 text-white dark:bg-indigo-500 rounded-full text-xs font-medium hover:bg-indigo-600 disabled:opacity-50"
           >
-            Create account
+            {loading ? 'Creating...' : 'Create account'}
           </button>
         </div>
       </form>
@@ -751,9 +824,10 @@ function Signup() {
   );
 }
 
+
 // ------------------ Home wrapper ------------------
 
-function Home() {
+export function Home() {
   return (
     <>
       <Hero />
