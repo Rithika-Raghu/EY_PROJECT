@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Sun, Moon, Bell, Search, Globe, ChevronRight, CreditCard, FileText, HelpCircle, Calculator, Upload, ShieldCheck, Wallet, TrendingUp, Users, BookOpen, Bot } from "lucide-react";
+import { Sun, Moon, Bell, Search, ChevronRight, CreditCard, FileText, HelpCircle, Calculator, Upload, ShieldCheck, Wallet, TrendingUp, Users, Bot } from "lucide-react";
 import {
   LineChart,
   Line,

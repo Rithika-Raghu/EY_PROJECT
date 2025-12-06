@@ -3,10 +3,22 @@ from flask_cors import CORS
 import os
 from agents.master_agent import MasterAgent
 from flask import session
-
-
+from database.models import *
+from config import DevelopmentConfig
+from database.vector_store import ChromaDBStore
 
 app = Flask(__name__)
+app.config.from_object(DevelopmentConfig)
+
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+    print("📌 Database tables created successfully!")
+
+vector_store = ChromaDBStore()
+print("📌 ChromaDB vector store initialized")
+
 CORS(app)
 
 agent = MasterAgent()

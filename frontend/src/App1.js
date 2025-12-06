@@ -618,7 +618,7 @@ function AuthShell({ title, subtitle, children }) {
   );
 }
 
-function Login() {
+export function Login() {
   const navigate = useNavigate();
   const handle = (e) => {
     e.preventDefault();
@@ -654,12 +654,12 @@ function Login() {
           />
         </div>
         <div className="flex items-center justify-between text-xs">
-          <a
+          <button
             href="#"
             className="text-indigo-600 dark:text-indigo-400 hover:underline"
           >
             Forgot password?
-          </a>
+          </button>
           <button
             type="submit"
             className="px-4 py-2 bg-slate-900 text-white dark:bg-indigo-500 rounded-full text-xs font-medium hover:bg-indigo-600"
@@ -682,7 +682,7 @@ function Login() {
   );
 }
 
-function Signup() {
+export function Signup() {
   const navigate = useNavigate();
   const handle = (e) => {
     e.preventDefault();
@@ -753,7 +753,7 @@ function Signup() {
 
 // ------------------ Home wrapper ------------------
 
-function Home() {
+export function Home() {
   return (
     <>
       <Hero />
