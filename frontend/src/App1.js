@@ -12,6 +12,10 @@ import {
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useTheme } from "./useTheme";
 import { useAuth } from './context/AuthContext';
+import AdminDashboard from './admin_dashboard';        
+import CustomerDashboard from './customer_dashboard'; 
+import HelpCenter from "./pages/Help"; 
+
 
 // ------------------ Small helpers ------------------
 
@@ -624,11 +628,10 @@ function AuthShell({ title, subtitle, children }) {
 export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth(); // Get login function from context
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname || '/customer';
 
   const handle = async (e) => {
     e.preventDefault();
@@ -643,16 +646,23 @@ export function Login() {
 
     try {
       const result = await loginUser(credentials);
-      console.log('Login success:', result);
+      console.log('✅ Login success:', result.user.role);
       
-      // Store user in context AND localStorage
-      login(result.user);
+      // ✅ Store ONLY in localStorage (no context needed)
+      localStorage.setItem('user', JSON.stringify(result.user));
+
+      console.log(result.user);
       
-      // Navigate to dashboard or original destination
-      navigate(from, { replace: true });
+      // ✅ ROLE-BASED NAVIGATION
+      if (result.user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/customer', { replace: true });  // Customer default
+      }
+      
     } catch (err) {
       setError(err.message || 'Login failed');
-      console.error('Login error:', err);
+      console.error('❌ Login error:', err);
     } finally {
       setLoading(false);
     }
@@ -852,6 +862,9 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/customer" element={<CustomerDashboard />} />
+            <Route path="/help" element={<HelpCenter />} />
           </Routes>
         </main>
         <ChatDock />

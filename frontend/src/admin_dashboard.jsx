@@ -194,9 +194,6 @@ export default function AdminDashboard(props) {
           <button onClick={() => setActiveTab("products")} className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full ${activeTab==="products"?"bg-white/5":"hover:bg-white/3"}`}>
             <Settings size={18} /> Product Management
           </button>
-          <button onClick={() => setActiveTab("campaigns")} className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full ${activeTab==="campaigns"?"bg-white/5":"hover:bg-white/3"}`}>
-            <Zap size={18} /> Campaigns
-          </button>
           <button onClick={() => setActiveTab("documents")} className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full ${activeTab==="documents"?"bg-white/5":"hover:bg-white/3"}`}>
             <FileArchive size={18} /> Documents
           </button>

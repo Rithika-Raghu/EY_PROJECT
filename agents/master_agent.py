@@ -45,7 +45,7 @@ class MasterAgent:
         self.sanction_agent = SanctionAgent()
 
         # Gemini API key
-        self.api_key = os.getenv("GEMINI_API_KEY", "AIzaSyBkcFjxM5flKoCK3Slxq5vkOJGyfYkhwwE")
+        self.api_key = os.getenv("GEMINI_API_KEY", "AIzaSyChFI3jr7Z6F-yj6x0_EaNTUFtLawAiQws")
         self.genai_client = genai.Client(api_key=self.api_key)
         
         # Sales Agent Chat (separate Gemini session for sales)

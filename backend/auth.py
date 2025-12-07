@@ -2,7 +2,6 @@ from database.models import *
 from .security import user_datastore
 from flask_restful import Resource, reqparse,request
 from werkzeug.security import generate_password_hash, check_password_hash
-from database.models import *   #
 
 
 class Signup(Resource):
@@ -36,11 +35,11 @@ class Signup(Resource):
 class Login(Resource):
     def post(self):
         data = request.get_json()
-
         email = data.get("email")
         password = data.get("password")
 
-        user = user_datastore.find_user(email=email)
+        # ✅ BYPASS user_datastore - Direct SQLAlchemy query
+        user = User.query.filter_by(email=email).first()
 
         if not user or not check_password_hash(user.password, password):
             return {"message": "Invalid credentials"}, 401
@@ -48,8 +47,9 @@ class Login(Resource):
         return {
             "message": "Login success",
             "user": {
+                "id": user.id,
+                "username": user.username or user.email,
                 "email": user.email,
-                "username": user.username,
-                "id": user.id
+                "role": user.role  # Direct access - no getattr needed
             }
         }, 200

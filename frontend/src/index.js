@@ -14,6 +14,8 @@ import Documents from "./pages/Documents";
 import Insurance from "./pages/Insurance";
 import "./index.css";
 import { Home, Login, Signup } from './App1';
+import HelpCenter from "./pages/Help";
+import OffersRecommendations from "./pages/Offers"
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -45,6 +47,23 @@ root.render(
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/help" 
+            element={
+              <ProtectedRoute>
+                <HelpCenter />
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <CustomerDashboard />
+              </ProtectedRoute>
+            } 
+          />
           
           <Route 
             path="/dashboard" 
@@ -69,6 +88,15 @@ root.render(
             element={
               <ProtectedRoute>
                 <LoanStatusTracker />
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="/offers" 
+            element={
+              <ProtectedRoute>
+                <OffersRecommendations />
               </ProtectedRoute>
             } 
           />
