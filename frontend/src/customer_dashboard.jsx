@@ -81,7 +81,6 @@ const CustomerDashboard = () => {
             <NavItem link="/payments" label={t("payments")} icon={<CreditCard size={18} />} />
             <NavItem link="/emi-tools" label={t("tools")} icon={<Calculator size={18} />} />
             <NavItem link="/documents" label={t("documents")} icon={<FileText size={18} />} />
-            <NavItem link="/insurance" label={t("insurance")} icon={<ShieldCheck size={18} />} />
             <NavItem label={t("offers")} icon={<TrendingUp size={18} />} />
             <NavItem label={t("help")} icon={<HelpCircle size={18} />} />
             <NavItem label={"Chatbot Assistant"} icon={<Bot size={18} />} />

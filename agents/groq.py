@@ -1,9 +1,8 @@
 from typing import Dict, Tuple
+from groq import Groq  # ✅ Added Groq
 import os
 import re
 from PyPDF2 import PdfReader
-from google import genai
-from google.genai import types
 
 from agents.underwriting_agent import UnderwritingAgent
 from agents.sanction_agent import SanctionAgent
@@ -44,12 +43,13 @@ class MasterAgent:
         self.underwriting_agent = UnderwritingAgent(self.credit_bureau, self.offer_mart)
         self.sanction_agent = SanctionAgent()
 
-        # Gemini API key
-        self.api_key = os.getenv("GEMINI_API_KEY", "AIzaSyAQpjQXoB9QjbmNpqQi7bTh0Du5dxrQDfM")
-        self.genai_client = genai.Client(api_key=self.api_key)
+        # ✅ Groq API (Primary - FREE & FAST)
+        self.groq_api_key = os.getenv("GROQ_API_KEY", "Input Key")
+        self.groq_client = Groq(api_key=self.groq_api_key)
         
-        # Sales Agent Chat (separate Gemini session for sales)
-        self.sales_chat = None
+        # Sales Agent Chat history (for Groq)
+        self.sales_chat_history = []
+        self.sales_system_prompt = None
 
     def _extract_name(self, message: str) -> str:
         """Extract customer name from initial greeting."""
@@ -73,9 +73,9 @@ class MasterAgent:
         elif self.current_stage == "get_phone":
             return self._handle_phone(user_message, session)
 
-        # ========== STAGE 2: SALES AGENT (Worker 1 - Gemini-powered) ==========
+        # ========== STAGE 2: SALES AGENT (Worker 1 - Groq-powered) ==========
         elif self.current_stage == "sales_chat":
-            return self._handoff_to_sales_agent_gemini(user_message, session)
+            return self._handoff_to_sales_agent_groq(user_message, session)
 
         # ========== STAGE 3: COLLECT APPLICATION DETAILS ==========
         elif self.current_stage == "get_purpose":
@@ -118,10 +118,10 @@ class MasterAgent:
         """Stage 1: Capture phone and handoff to Sales Agent."""
         session["customer_data"]["phone"] = user_message
         self.current_stage = "sales_chat"
-        self.active_worker = "SalesAgent (Gemini)"
+        self.active_worker = "SalesAgent (Groq)"  # ✅ Changed
         
-        # Initialize Gemini Sales Chat
-        self._init_sales_chat(session)
+        # Initialize Groq Sales Chat
+        self._init_sales_chat_groq(session)
         
         return (
             "Perfect! 📞 Your number is verified.\n"
@@ -129,42 +129,44 @@ class MasterAgent:
             "What brings you here today — home renovation, business, wedding, or something else?"
         )
 
-    def _init_sales_chat(self, session: Dict):
-        """Initialize Gemini-powered Sales Agent chat."""
+    def _init_sales_chat_groq(self, session: Dict):
+        """Initialize Groq-powered Sales Agent chat."""
         customer_name = session["customer_data"].get("name", "Customer")
         
-        SALES_SYSTEM_INSTRUCTION = f"""
-You are a friendly, persuasive sales agent for Tata Capital Personal Loans talking to {customer_name}.
+        self.sales_system_prompt = f"""You are a friendly, persuasive sales agent for Tata Capital Personal Loans talking to {customer_name}.
 
 Your goals:
 1. Understand their loan purpose (home renovation, wedding, business, education, medical, travel, etc.)
-2. Discuss and negotiate loan amount
+2. Discuss and negotiate loan amount (suggest realistic amounts based on purpose)
 3. Suggest optimal tenure (12-60 months)
 4. Explain benefits: competitive rates from 10.5% p.a., flexible tenure, instant approval
-5. Handle objections with empathy
+5. Handle objections with empathy and alternative solutions
 6. Close the deal and get customer agreement to proceed
 
 Guidelines:
-- Be warm, professional, and persuasive
+- Be warm, professional, and persuasive (like a helpful friend, not pushy salesperson)
 - Use emojis sparingly (💰 🏠 💼 ✅)
-- Ask ONE question at a time
-- When customer agrees to proceed, say exactly: "SALES_COMPLETE: Let's move forward with your application"
-- Use the calc_emi tool to show EMI calculations when discussing amounts
-- Use check_eligibility to validate affordability
+- Ask ONE question at a time to keep conversation natural
+- When discussing amounts, provide EMI estimates to make it tangible
+- When customer agrees to proceed with application, say EXACTLY: "SALES_COMPLETE: Let's move forward with your application"
+- Keep responses concise (2-4 sentences maximum)
+
+Sales Techniques:
+- Mirror customer's language and concerns
+- Use social proof ("Most customers in your situation...")
+- Create urgency subtly ("Limited time offer this month...")
+- Focus on benefits, not features
 
 Do NOT:
-- Collect formal application details (purpose/amount/tenure as form fields) - just discuss naturally
-- Perform underwriting or approval
-- Ask for documents
-"""
+- Collect formal application details as form fields (just discuss naturally)
+- Perform underwriting or approval decisions
+- Ask for documents at this stage
+- Be robotic or use banking jargon
 
-        self.sales_chat = self.genai_client.chats.create(
-            model="gemini-2.5-flash",
-            config=types.GenerateContentConfig(
-                system_instruction=SALES_SYSTEM_INSTRUCTION,
-                tools=[calc_emi, check_eligibility],
-            ),
-        )
+Remember: Your job is to understand needs, build trust, and get agreement to proceed with formal application."""
+
+        # Reset conversation history
+        self.sales_chat_history = []
 
     def _handle_purpose(self, user_message: str, session: Dict) -> str:
         """Stage 3: Capture loan purpose."""
@@ -226,24 +228,53 @@ Do NOT:
 
     # ==================== WORKER AGENT HANDOFFS ====================
 
-    def _handoff_to_sales_agent_gemini(self, user_message: str, session: Dict) -> str:
+    def _handoff_to_sales_agent_groq(self, user_message: str, session: Dict) -> str:
         """
-        Worker Agent 1: Sales Agent (Gemini-powered)
-        Natural conversation, negotiation, and persuasion using Gemini.
+        Worker Agent 1: Sales Agent (Groq-powered)
+        Natural conversation, negotiation, and persuasion using Groq Llama 3.3.
         """
-        if not self.sales_chat:
-            self._init_sales_chat(session)
+        if not self.sales_system_prompt:
+            self._init_sales_chat_groq(session)
 
-        # Send message to Gemini Sales Agent
-        response = self.sales_chat.send_message(user_message)
-        reply_text = response.text
+        # Add user message to history
+        self.sales_chat_history.append({
+            "role": "user",
+            "content": user_message
+        })
+
+        # Build messages for Groq
+        messages = [
+            {"role": "system", "content": self.sales_system_prompt},
+            *self.sales_chat_history
+        ]
+
+        # ✅ Call Groq API
+        try:
+            response = self.groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",  # ✅ Latest active model
+                messages=messages,
+                temperature=0.7,
+                max_tokens=500,
+                top_p=0.9
+            )
+            
+            reply_text = response.choices[0].message.content
+
+            # Add assistant response to history
+            self.sales_chat_history.append({
+                "role": "assistant",
+                "content": reply_text
+            })
+
+        except Exception as e:
+            return f"⚠️ Error communicating with sales agent: {e}"
 
         # Check if sales conversation is complete
         if "SALES_COMPLETE" in reply_text:
             session["sales_completed"] = True
             self.current_stage = "get_purpose"
             self.active_worker = None
-            self.sales_chat = None  # Clean up
+            self.sales_chat_history = []  # Clean up
             
             # Remove the SALES_COMPLETE marker from response
             reply_text = reply_text.replace("SALES_COMPLETE:", "").strip()
@@ -393,7 +424,9 @@ if __name__ == "__main__":
     agent = MasterAgent()
     session = {"customer_data": {}, "loan_application": {}}
 
-    print("🤖 SmartLoan AI Assistant Activated!\n")
+    print("🤖 SmartLoan AI Assistant Activated!")
+    print("🚀 Powered by Groq Llama 3.3 70B")
+    print("⚡ 30 RPM | 14,400 RPD\n")
     print(f"Active Agent: {agent.agent_name}\n")
 
     while True:
