@@ -22,10 +22,14 @@ app = Flask(__name__)
 app.config.from_object(DevelopmentConfig)
 
 # ✅ CRITICAL: Override SQLAlchemy database to use same SQLite file as loan system
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///loan_system.db'
-app.config['SQLALCHEMY_BINDS'] = {
-    'loan_db': 'sqlite:///loan_system.db'  # Both use same database
-}
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///loan_system.db'
+# app.config['SQLALCHEMY_BINDS'] = {
+#     'loan_db': 'sqlite:///loan_system.db'  # Both use same database
+# }
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, '..', 'loan_system.db')  # One level up from backend/
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Session configuration for Flask-Session
@@ -226,7 +230,7 @@ def upload_file():
     
     file = request.files["file"]
     doc_type = request.form.get("document_type", "unknown")
-    
+    print(file)
     if file.filename == '':
         return jsonify({"error": "No file selected"}), 400
     
@@ -236,8 +240,10 @@ def upload_file():
     os.makedirs("uploads", exist_ok=True)
     file.save(filepath)
     
+
     # Get session
     session_id = session.get('chat_session_id')
+    print(session_id)
     if not session_id or session_id not in chat_sessions:
         return jsonify({
             "error": "No active chat session. Please start a conversation first."

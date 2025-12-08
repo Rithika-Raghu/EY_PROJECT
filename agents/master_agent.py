@@ -31,7 +31,12 @@ class MasterAgent:
         
         # ✅ Initialize persistent database FIRST
         print("🔄 Initializing database...")
-        self.db = DatabaseService("loan_system.db")
+        BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+        DB_PATH = os.path.join(BASE_DIR, '..', 'loan_system.db')
+        
+        print(f"🔄 Initializing database at: {DB_PATH}")
+        self.db = DatabaseService(DB_PATH)
+        #self.db = DatabaseService("loan_system.db")
         
         # Initialize services (shared across sessions) with database
         self.crm = CRMService(self.db)
@@ -44,7 +49,7 @@ class MasterAgent:
         self.sanction_agent = SanctionAgent()
 
         # Groq API
-        self.groq_api_key = os.getenv("GROQ_API_KEY", "Input key")
+        self.groq_api_key = os.getenv("GROQ_API_KEY", "INPUT KEY")
         self.groq_client = Groq(api_key=self.groq_api_key)
         
         # ✅ Session-specific state (will be reset per conversation)
@@ -152,7 +157,7 @@ class MasterAgent:
             session.clear()
             session["customer_data"] = {}
             session["loan_application"] = {}
-            return "🔄 Conversation reset! Let's start fresh.\n\nHi! Welcome to Tata Capital SmartLoan 🏦\nWhat's your name?"
+            return "🔄 Conversation reset! Let's start fresh.\n\nHi! Welcome to Aurum 🏦\nWhat's your name?"
 
         # Initialize session structure
         session.setdefault("customer_data", {})
@@ -229,11 +234,12 @@ class MasterAgent:
         if customer:
             # Existing customer - pre-fill data
             session["customer_data"].update({
-                "name": customer["name"],
-                "city": customer["city"],
-                "email": customer["email"],
-                "credit_score": customer["credit_score"],
-                "pre_approved_limit": customer["pre_approved_limit"],
+                "user_id": customer.get("id"),
+                "name": customer.get("username", "Customer"),  # ✅ username, not name
+                "city": customer.get("city", ""),
+                "email": customer.get("email", ""),
+                "credit_score": customer.get("credit_score", 750),
+                "pre_approved_limit": customer.get("pre_approved_limit", 0),
                 "existing_customer": True
             })
             
@@ -242,13 +248,18 @@ class MasterAgent:
             
             # Initialize Groq Sales Chat
             self._init_sales_chat_groq(session)
+            # ✅ Use .get() to safely access values
+            username = customer.get("username", "Customer")
+            city = customer.get("city", "N/A")
+            limit = customer.get("pre_approved_limit", 0)
+            score = customer.get("credit_score", 750)
             
             return (
-                f"Welcome back, {customer['name']}! 🎉\n"
-                f"📍 City: {customer['city']}\n"
-                f"💳 Pre-approved limit: ₹{customer['pre_approved_limit']:,}\n"
-                f"⭐ Credit Score: {customer['credit_score']}/900\n\n"
-                f"Let me connect you with our Sales Agent to discuss your loan needs 💬\n\n"
+                f"Welcome back, {username}! 🎉\n"
+                f" City: {city}\n"
+                f"Pre-approved limit: ₹{limit:,}\n"
+                f" Credit Score: {score}/900\n\n"
+                f"Let me connect you with our Sales Agent to discuss your loan needs \n\n"
                 "What brings you here today — home renovation, business, wedding, or something else?"
             )
         else:
@@ -260,8 +271,8 @@ class MasterAgent:
             self._init_sales_chat_groq(session)
             
             return (
-                "Perfect! 📞 Your number is verified.\n"
-                "Let me connect you with our Sales Agent to understand your needs 💬\n\n"
+                "Perfect! Your number is verified.\n"
+                "Let me connect you with our Sales Agent to understand your needs \n\n"
                 "What brings you here today — home renovation, business, wedding, or something else?"
             )
 
@@ -360,7 +371,7 @@ Do NOT say SALES_COMPLETE until you have EXPLICIT, SPECIFIC answers for:
                 self.current_stage = "await_verification"
                 self.active_worker = "VerificationAgent"
                 msg += (
-                    "\n\n✅ Great news! Now handing over to our Verification Agent "
+                    "\n\nGreat news! Now handing over to our Verification Agent "
                     "to verify your documents (PAN/Aadhaar).\n"
                     "Please upload your PAN card PDF now."
                 )
@@ -440,10 +451,10 @@ Do NOT say SALES_COMPLETE until you have EXPLICIT, SPECIFIC answers for:
             tenure = session["loan_application"].get("tenure", 36)
             purpose = session["customer_data"].get("purpose", "personal")
             
-            reply_text += f"\n\n✅ Perfect! I've captured your details:"
-            reply_text += f"\n📌 Purpose: {purpose.title()}"
-            reply_text += f"\n💰 Amount: ₹{amount:,}"
-            reply_text += f"\n📅 Tenure: {tenure} months"
+            reply_text += f"\n\n Perfect! I've captured your details:"
+            reply_text += f"\n Purpose: {purpose.title()}"
+            reply_text += f"\n Amount: ₹{amount:,}"
+            reply_text += f"\n Tenure: {tenure} months"
             reply_text += f"\n\n🔄 Now processing your application with our Underwriting Agent..."
             
             # ✅ DIRECTLY CALL UNDERWRITING
@@ -461,7 +472,7 @@ Do NOT say SALES_COMPLETE until you have EXPLICIT, SPECIFIC answers for:
                 self.current_stage = "await_verification"
                 self.active_worker = "VerificationAgent"
                 underwriting_msg += (
-                    "\n\n✅ Great news! Now handing over to our Verification Agent "
+                    "\n\nGreat news! Now handing over to our Verification Agent "
                     "to verify your documents (PAN/Aadhaar).\n"
                     "Please upload your PAN card PDF now."
                 )
@@ -587,11 +598,19 @@ Do NOT say SALES_COMPLETE until you have EXPLICIT, SPECIFIC answers for:
             self.current_stage = "done"
             self.active_worker = "SanctionAgent"
             
-            # ✅ Save loan application to database
-            self.db.save_loan_application(
-                session["customer_data"]["phone"],
-                session["loan_application"]
-            )
+            # ✅ FIX: Save loan application with user_id
+            phone = session["customer_data"]["phone"]
+            customer = self.db.get_customer_by_phone(phone)
+            
+            if customer:
+                user_id = customer.get("id")
+                if user_id:
+                    self.db.save_loan_application(user_id, session["loan_application"])
+                    print(f"✅ Loan saved for user_id: {user_id}")
+                else:
+                    print("⚠️ No user_id found in customer record")
+            else:
+                print(f"⚠️ Customer not found for phone: {phone}")
             
             return (
                 f"{response}\n\n✅ All KYC documents verified successfully!\n"
@@ -600,7 +619,9 @@ Do NOT say SALES_COMPLETE until you have EXPLICIT, SPECIFIC answers for:
             )
 
         except Exception as e:
+            print(f"❌ Error in aadhaar verification: {str(e)}")
             return f"⚠️ Error verifying Aadhaar: {e}"
+
 
     def _handoff_to_sanction_agent(self, user_message: str, session: Dict) -> str:
         """
@@ -615,8 +636,8 @@ Do NOT say SALES_COMPLETE until you have EXPLICIT, SPECIFIC answers for:
             self.current_stage = "done"  # Mark as complete
             return (
                 f"✅ Sanction letter generated successfully!\n"
-                f"📄 Saved as: {file}\n\n"
-                f"Thank you for choosing Tata Capital! 🎉\n"
+                f"Saved as: {file}\n\n"
+                f"Thank you for choosing Aurum!\n"
                 f"Type 'reset' to start a new application."
             )
 
@@ -630,19 +651,19 @@ if __name__ == "__main__":
     session = {"customer_data": {}, "loan_application": {}}
 
     print("\n" + "="*60)
-    print("🤖 SmartLoan AI Assistant Activated!")
-    print("🚀 Powered by Groq Llama 3.3 70B")
-    print("⚡ 30 RPM | 14,400 RPD")
+    print("SmartLoan AI Assistant Activated!")
+    print("Powered by Groq Llama 3.3 70B")
+    print("30 RPM | 14,400 RPD")
     print("="*60)
     print(f"Active Agent: {agent.agent_name}\n")
-    print("💡 Commands:")
+    print("Commands:")
     print("   - Type 'reset' to start new conversation")
     print("   - Type 'quit' to exit")
     print("   - Type 'list' to see dummy customer phones")
     print("="*60 + "\n")
 
     # Welcome message
-    print("Agent: Hi! Welcome to Tata Capital SmartLoan 🏦")
+    print("Agent: Hi! Welcome to Aurum")
     print("What's your name?\n")
 
     while True:
@@ -650,7 +671,7 @@ if __name__ == "__main__":
         
         # Handle special commands
         if user.lower() in ["quit", "exit", "bye"]:
-            print("\n👋 Thank you for using SmartLoan AI! Goodbye!\n")
+            print("\n Thank you for using Au! Goodbye!\n")
             break
         
         if user.lower() == "list":

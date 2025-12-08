@@ -176,7 +176,7 @@ export default function AdminDashboard(props) {
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 bg-gradient-to-br from-sky-400 to-blue-600 rounded-xl flex items-center justify-center font-bold text-black">ADM</div>
           <div>
-            <h2 className="text-lg font-semibold">Finomic Admin</h2>
+            <h2 className="text-lg font-semibold">AURUM Admin</h2>
             <p className="text-xs opacity-70">Super Admin Console</p>
           </div>
         </div>

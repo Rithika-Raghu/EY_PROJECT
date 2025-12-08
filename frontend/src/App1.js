@@ -1,635 +1,1280 @@
 // src/App.jsx
-import React, { useEffect, useState } from "react";
-import { loginUser } from '../src/api/auth';
-import { signupUser } from '../src/api/auth';
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  createContext,
+  useContext
+} from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Link,
-  useNavigate,useLocation
+  useNavigate, useLocation
 } from "react-router-dom";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useTheme } from "./useTheme";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  AnimatePresence,
+  useInView
+} from "framer-motion";
+import {
+  Bot,
+  Sparkles,
+  TrendingUp,
+  Clock,
+  Shield,
+  FileCheck,
+  Zap,
+  Database,
+  Brain,
+  Lock,
+  CreditCard,
+  BarChart3,
+  CheckCircle2,
+  ArrowRight,
+  Menu,
+  X,
+  Sun,
+  Moon,
+  Play,
+  Users,
+  Activity,
+  Award,
+  MessageSquare,
+  Upload,
+  RefreshCw,
+  Send,
+  Github,
+  Twitter,
+  Linkedin,
+  Mail,
+  User,
+  Eye,
+  EyeOff,
+  Zap as ZapIcon
+} from "lucide-react";
+import { loginUser, signupUser } from "../src/api/auth";
+import AdminDashboard from "./admin_dashboard";
+import CustomerDashboard from "./customer_dashboard";
+import HelpCenter from "./pages/Help";
+//import { useTheme } from "./useTheme";
 import { useAuth } from './context/AuthContext';
-import AdminDashboard from './admin_dashboard';        
-import CustomerDashboard from './customer_dashboard'; 
-import HelpCenter from "./pages/Help"; 
 
 
-// ------------------ Small helpers ------------------
+// ==================== THEME CONTEXT ====================
 
-const quickReplies = [
-  "Check my loan eligibility",
-  "Explain my EMI schedule",
-  "Help me choose a product",
-];
+const ThemeContext = createContext({
+  theme: "light",
+  toggleTheme: () => {}
+});
 
-function useTypingLoop(lines, speed = 40, hold = 1500) {
-  const [index, setIndex] = useState(0);
-  const [typed, setTyped] = useState("");
+export const ThemeProvider = ({ children }) => {
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === "undefined") return "light";
+    const saved = localStorage.getItem("theme");
+    if (saved) return saved;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  });
 
   useEffect(() => {
-    const current = lines[index % lines.length];
-    let i = 0;
-    let active = true;
+    const root = document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
-    const type = () => {
-      if (!active) return;
-      if (i <= current.length) {
-        setTyped(current.slice(0, i));
-        i += 1;
-        setTimeout(type, speed);
-      } else {
-        setTimeout(() => {
-          if (!active) return;
-          setTyped("");
-          setIndex((prev) => prev + 1);
-        }, hold);
-      }
-    };
-    type();
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  };
 
-    return () => {
-      active = false;
-    };
-  }, [index, lines, speed, hold]);
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
 
-  return typed;
-}
+export const useTheme = () => useContext(ThemeContext);
 
-// ------------------ Global chrome ------------------
+// ==================== ANIMATION VARIANTS ====================
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 60 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
+  }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+};
+
+const scaleIn = {
+  hidden: { scale: 0.8, opacity: 0 },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: { type: "spring", stiffness: 100, damping: 15 }
+  }
+};
+
+// ==================== LOGO ====================
 
 function Logo() {
   return (
-    <div className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-      <div className="h-7 w-7 rounded-xl bg-gradient-to-tr from-indigo-500 via-sky-400 to-emerald-400 text-white flex items-center justify-center text-xs shadow-md">
-        ◦
-      </div>
-      <div className="flex flex-col leading-tight">
-        <span className="text-slate-900 dark:text-slate-100">Tata Capital</span>
-        <span className="text-[10px] text-slate-400 dark:text-slate-500">
-          ChatOS
+    <Link to="/" className="flex items-center gap-2.5 group">
+      <motion.div
+        whileHover={{ rotate: 360 }}
+        transition={{ duration: 0.6, ease: "easeInOut" }}
+        className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center shadow-lg"
+      >
+        <Bot className="w-6 h-6 text-white" strokeWidth={2.5} />
+        <motion.div
+          className="absolute inset-0 rounded-xl bg-indigo-500 opacity-0 group-hover:opacity-50 blur-lg"
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+      </motion.div>
+      <div className="flex flex-col leading-none">
+        <span className="text-slate-900 dark:text-white font-black text-base tracking-tight">
+          AURUM
+        </span>
+        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold tracking-wider flex items-center gap-1">
+          <Sparkles className="w-2.5 h-2.5" />
+          Aura
         </span>
       </div>
-    </div>
+    </Link>
   );
 }
+
+// ==================== THEME TOGGLE ====================
 
 function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <button
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       onClick={toggleTheme}
-      className="relative inline-flex h-8 w-14 items-center rounded-full border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900 px-1 transition-colors"
+      className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-md hover:shadow-lg"
+      aria-label="Toggle theme"
     >
-      <span
-        className={`inline-flex h-6 w-6 transform items-center justify-center rounded-full bg-slate-900 text-[11px] text-white shadow transition-transform dark:bg-amber-400 ${
-          theme === "dark" ? "translate-x-6" : "translate-x-0"
-        }`}
-      >
-        {theme === "dark" ? "☾" : "☀︎"}
-      </span>
-    </button>
+      <AnimatePresence mode="wait">
+        {theme === "dark" ? (
+          <motion.div
+            key="moon"
+            initial={{ rotate: -90, opacity: 0 }}
+            animate={{ rotate: 0, opacity: 1 }}
+            exit={{ rotate: 90, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Moon className="w-5 h-5 text-indigo-500" strokeWidth={2.5} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="sun"
+            initial={{ rotate: 90, opacity: 0 }}
+            animate={{ rotate: 0, opacity: 1 }}
+            exit={{ rotate: -90, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Sun className="w-5 h-5 text-amber-600" strokeWidth={2.5} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.button>
   );
 }
+
+
+// ==================== MAIN NAV ====================
 
 function MainNav() {
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const navItems = [
+    { key: "product", label: "Product", href: "#product", icon: Bot },
+    { key: "features", label: "Features", href: "#features", icon: Sparkles },
+    { key: "demo", label: "Demo", href: "#demo", icon: Play },
+    { key: "pricing", label: "Pricing", href: "#pricing", icon: CreditCard }
+  ];
+
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-100/70 dark:border-slate-800/70 bg-white/75 dark:bg-slate-950/60 backdrop-blur">
-      <div className="max-w-6xl mx-auto flex items-center justify-between px-4 md:px-6 py-3">
+    <motion.header
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ type: "spring", stiffness: 100, damping: 20 }}
+      className={`sticky top-0 z-50 transition-all duration-500 ${
+        scrolled
+          ? "bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border-b border-slate-200/50 dark:border-slate-800/50 shadow-xl shadow-slate-900/5"
+          : "bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-b border-slate-200/30 dark:border-slate-800/30 shadow-md"
+      }`}
+    >
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 md:px-8 py-4">
         <Logo />
-        <nav className="hidden md:flex items-center gap-6 text-xs font-medium">
-          <a
-            href="#hero"
-            className="text-slate-500 dark:text-slate-300 hover:text-indigo-500"
-          >
-            Product
-          </a>
-          <a
-            href="#why"
-            className="text-slate-500 dark:text-slate-300 hover:text-indigo-500"
-          >
-            Why this bot
-          </a>
-          <a
-            href="#canvas"
-            className="text-slate-500 dark:text-slate-300 hover:text-indigo-500"
-          >
-            Live canvas
-          </a>
-          <Link
-            to="/login"
-            className="px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:border-indigo-500"
-          >
-            Console
-          </Link>
-          <Link
-            to="/signup"
-            className="px-4 py-1.5 rounded-full bg-slate-900 text-white dark:bg-indigo-500 dark:text-white hover:bg-indigo-600 text-xs shadow-md"
-          >
-            Get started
-          </Link>
-          <ThemeToggle />
+
+        {/* Desktop Nav */}
+        <nav className="hidden lg:flex items-center gap-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <motion.a
+                key={item.key}
+                href={item.href}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-all group"
+              >
+                <Icon className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                {item.label}
+              </motion.a>
+            );
+          })}
         </nav>
-        <div className="md:hidden flex items-center gap-3">
+
+        <div className="hidden lg:flex items-center gap-3">
           <ThemeToggle />
-          <Link
-            to="/signup"
-            className="px-3 py-1.5 rounded-full bg-slate-900 text-white dark:bg-indigo-500 text-[11px] font-medium"
-          >
-            Start
+
+          <Link to="/login">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-5 py-2.5 rounded-xl border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-semibold hover:border-indigo-500 dark:hover:border-indigo-400 transition-all"
+            >
+              Sign In
+            </motion.button>
+          </Link>
+
+          <Link to="/signup">
+            <motion.button
+              whileHover={{
+                scale: 1.05,
+                boxShadow: "0 20px 40px rgba(99, 102, 241, 0.3)"
+              }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold shadow-lg"
+            >
+              Get Started
+              <ArrowRight className="w-4 h-4" />
+            </motion.button>
           </Link>
         </div>
+
+        {/* Mobile Menu Button */}
+        <div className="lg:hidden flex items-center gap-3">
+          <ThemeToggle />
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
+          >
+            {mobileMenuOpen ? (
+              <X className="w-6 h-6 text-slate-900 dark:text-white" />
+            ) : (
+              <Menu className="w-6 h-6 text-slate-900 dark:text-white" />
+            )}
+          </motion.button>
+        </div>
       </div>
-    </header>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl overflow-hidden"
+          >
+            <div className="px-4 py-6 space-y-3">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <a
+                    key={item.key}
+                    href={item.href}
+                    className="flex items-center gap-3 py-3 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {item.label}
+                  </a>
+                );
+              })}
+              <div className="pt-4 space-y-3 border-t border-slate-200 dark:border-slate-800">
+                <Link
+                  to="/login"
+                  className="block w-full"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <button className="w-full py-3 px-4 rounded-xl border-2 border-slate-300 dark:border-slate-600 font-semibold">
+                    Sign In
+                  </button>
+                </Link>
+                <Link
+                  to="/signup"
+                  className="block w-full"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <button className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold flex items-center justify-center gap-2">
+                    Get Started
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.header>
   );
 }
 
-function MainFooter() {
+
+// ==================== 3D CHAT INTERFACE ====================
+
+function Chat3DInterface() {
+  const messages = [
+    {
+      role: "ai",
+      text: "Hi! I can help with loans, KYC verification, and EMI calculations.",
+      icon: Bot
+    },
+    { role: "user", text: "I need a ₹5L personal loan", icon: null },
+    {
+      role: "ai",
+      text:
+        "✓ Great! Based on your credit score (780), you're pre-approved. EMI options?",
+      icon: CheckCircle2
+    }
+  ];
+
   return (
-    <footer className="border-t border-slate-100 dark:border-slate-800 mt-16">
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 flex flex-col sm:flex-row gap-3 sm:gap-0 justify-between items-center text-[11px] text-slate-500 dark:text-slate-400">
-        <span>© {new Date().getFullYear()} Tata Capital ChatOS.</span>
-        <span>Conversational interface layer for loans, cards and savings.</span>
+    <motion.div
+      whileHover={{ rotateY: 0, rotateX: 0, scale: 1.02 }}
+      transition={{ type: "spring", stiffness: 100, damping: 15 }}
+      className="relative max-w-md mx-auto"
+      style={{
+        transformStyle: "preserve-3d",
+        transform: "rotateY(-5deg) rotateX(5deg)"
+      }}
+    >
+      {/* Glow Effect */}
+      <motion.div
+        animate={{
+          scale: [1, 1.2, 1],
+          opacity: [0.15, 0.25, 0.15]
+        }}
+        transition={{ duration: 3, repeat: Infinity }}
+        className="absolute -inset-8 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-3xl blur-3xl"
+      />
+
+      <div className="relative bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl rounded-3xl border-2 border-slate-200 dark:border-slate-800 shadow-2xl p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg"
+            >
+              <Bot className="w-7 h-7 text-white" strokeWidth={2.5} />
+              <motion.div
+                className="absolute inset-0 rounded-2xl bg-indigo-400 blur-md opacity-50"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+            </motion.div>
+            <div>
+              <div className="font-black text-slate-900 dark:text-white text-lg">
+                AURUM
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-medium">
+                <motion.div
+                  animate={{ scale: [1, 1.4, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="w-2 h-2 rounded-full bg-emerald-500"
+                />
+                Online · Instant Response
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="space-y-4 mb-6">
+          {messages.map((msg, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ delay: i * 0.2 }}
+              className={`flex ${
+                msg.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className={`max-w-[85%] px-5 py-3.5 rounded-2xl text-sm font-medium ${
+                  msg.role === "ai"
+                    ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                {msg.text}
+              </motion.div>
+            </motion.div>
+          ))}
+
+          {/* Typing Indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.9 }}
+            className="flex items-center gap-3"
+          >
+            <div className="flex gap-1.5 px-5 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              {[...Array(3)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    delay: i * 0.1
+                  }}
+                  className="w-2 h-2 rounded-full bg-indigo-500"
+                />
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Quick Replies */}
+        <div className="flex flex-wrap gap-2 mb-5">
+          {[
+            { icon: CheckCircle2, text: "Check Eligibility" },
+            { icon: CreditCard, text: "Calculate EMI" },
+            { icon: Upload, text: "Upload KYC" }
+          ].map((chip, i) => (
+            <motion.button
+              key={i}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-all"
+            >
+              <chip.icon className="w-3.5 h-3.5" />
+              {chip.text}
+            </motion.button>
+          ))}
+        </div>
+
+        {/* Input */}
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Ask anything about loans..."
+            className="flex-1 px-5 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 transition-all"
+          />
+          <motion.button
+            whileHover={{ scale: 1.1, rotate: 45 }}
+            whileTap={{ scale: 0.9 }}
+            className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <Send className="w-5 h-5" />
+          </motion.button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ==================== HERO SECTION ====================
+
+function Hero() {
+  const navigate = useNavigate();
+  const { scrollYProgress } = useScroll();
+  const y = useTransform(scrollYProgress, [0, 1], [0, 300]);
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95]);
+
+  const capabilities = [
+    { icon: Shield, text: "RBI-compliant KYC verification" },
+    { icon: Brain, text: "Natural language understanding" },
+    { icon: Zap, text: "Real-time credit score analysis" },
+    { icon: FileCheck, text: "Automated document processing" }
+  ];
+
+  const [currentCapability, setCurrentCapability] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentCapability((prev) => (prev + 1) % capabilities.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <section
+      id="product"
+      className="relative min-h-screen flex items-center overflow-hidden"
+    >
+      {/* Formal Background */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-slate-50 dark:bg-slate-950" />
+        
+        {/* Subtle gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-50/30 to-transparent dark:via-indigo-950/20" />
+        
+        {/* Professional grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.05)_1px,transparent_1px)] bg-[size:48px_48px] dark:bg-[linear-gradient(rgba(99,102,241,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.08)_1px,transparent_1px)]" />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-20 grid lg:grid-cols-2 gap-16 items-center">
+        {/* Left Column */}
+        <motion.div
+          style={{ y, opacity, scale }}
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div
+            variants={fadeInUp}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 mb-6"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.3, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <Activity className="w-4 h-4 text-emerald-500" />
+            </motion.div>
+            <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">
+              AI-Powered Loan Assistant · Live Now
+            </span>
+          </motion.div>
+
+          <motion.h1
+            variants={fadeInUp}
+            className="text-5xl md:text-7xl font-black tracking-tight leading-[1.1] mb-6"
+          >
+            <span className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-white dark:via-slate-100 dark:to-white bg-clip-text text-transparent">
+              One AI Agent.
+            </span>
+            <br />
+            <span className="relative inline-block mt-2">
+              <span className="relative z-10 bg-gradient-to-r from-indigo-600 to-indigo-700 bg-clip-text text-transparent">
+                Every Loan Journey.
+              </span>
+              <motion.span
+                animate={{ scaleX: [0, 1] }}
+                transition={{ duration: 0.8, delay: 0.5 }}
+                className="absolute bottom-3 left-0 right-0 h-4 bg-indigo-200 dark:bg-indigo-500/30 -z-10 origin-left rounded-full"
+              />
+            </span>
+          </motion.h1>
+
+          <motion.p
+            variants={fadeInUp}
+            className="text-lg md:text-xl text-slate-600 dark:text-slate-300 mb-8 leading-relaxed"
+          >
+            AURUM understands intent, verifies documents, checks
+            eligibility, and generates sanction letters — all in one natural
+            conversation.
+          </motion.p>
+
+          {/* Animated Capability Showcase */}
+          <motion.div
+            variants={fadeInUp}
+            className="flex items-center gap-3 mb-10 p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200 dark:border-slate-800 shadow-lg"
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentCapability}
+                initial={{ rotate: -90, opacity: 0, scale: 0.8 }}
+                animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                exit={{ rotate: 90, opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.5 }}
+                className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-lg"
+              >
+                {React.createElement(capabilities[currentCapability].icon, {
+                  className: "w-6 h-6 text-white",
+                  strokeWidth: 2.5
+                })}
+              </motion.div>
+            </AnimatePresence>
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={currentCapability}
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -20, opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+              >
+                {capabilities[currentCapability].text}
+              </motion.span>
+            </AnimatePresence>
+          </motion.div>
+
+          {/* CTA Buttons */}
+          <motion.div
+            variants={fadeInUp}
+            className="flex flex-wrap gap-4 mb-12"
+          >
+            <motion.button
+              whileHover={{
+                scale: 1.05,
+                boxShadow: "0 20px 40px rgba(99, 102, 241, 0.4)"
+              }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/signup")}
+              className="group relative px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold text-lg shadow-2xl overflow-hidden"
+            >
+              <motion.span
+                className="absolute inset-0 bg-gradient-to-r from-indigo-700 to-indigo-600"
+                initial={{ x: "100%" }}
+                whileHover={{ x: 0 }}
+                transition={{ duration: 0.3 }}
+              />
+              <span className="relative flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                Launch Experience
+                <motion.div
+                  animate={{ x: [0, 5, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </motion.div>
+              </span>
+            </motion.button>
+
+            <motion.a
+              href="#demo"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-8 py-4 rounded-2xl border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-lg hover:border-indigo-500 dark:hover:border-indigo-400 transition-all flex items-center gap-2"
+            >
+              <Play className="w-5 h-5" />
+              Watch Demo
+            </motion.a>
+          </motion.div>
+
+          {/* Stats */}
+          <motion.div
+            variants={staggerContainer}
+            className="grid grid-cols-3 gap-6"
+          >
+            {[
+              {
+                value: "60%",
+                label: "Faster Approvals",
+                icon: TrendingUp,
+                color: "from-emerald-500 to-teal-500"
+              },
+              {
+                value: "+24",
+                label: "NPS Uplift",
+                icon: BarChart3,
+                color: "from-blue-500 to-cyan-500"
+              },
+              {
+                value: "<3min",
+                label: "Time to Approval",
+                icon: Clock,
+                color: "from-indigo-500 to-indigo-600"
+              }
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                variants={scaleIn}
+                whileHover={{ scale: 1.05, y: -5 }}
+                className="relative p-5 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-2 border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden group"
+              >
+                <motion.div
+                  className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-10 transition-opacity`}
+                />
+                <div className="relative">
+                  <stat.icon
+                    className={`w-6 h-6 mb-3 bg-gradient-to-br ${stat.color} bg-clip-text text-transparent`}
+                    strokeWidth={2.5}
+                  />
+                  <div className="text-3xl font-black text-slate-900 dark:text-white mb-1">
+                    {stat.value}
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
+                    {stat.label}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </motion.div>
+
+        {/* Right Column - 3D Chat Interface */}
+        <motion.div
+          initial={{ opacity: 0, x: 100, rotateY: -25 }}
+          animate={{ opacity: 1, x: 0, rotateY: 0 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="relative"
+          style={{ perspective: 2000 }}
+        >
+          <Chat3DInterface />
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ==================== FEATURES SECTION ====================
+
+function FeaturesSection() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  const features = [
+    {
+      icon: Bot,
+      title: "Agentic AI Architecture",
+      description:
+        "Master Agent orchestrates specialized worker agents for sales, underwriting, verification, and sanction",
+      gradient: "from-indigo-500 to-indigo-600"
+    },
+    {
+      icon: FileCheck,
+      title: "Smart Document Processing",
+      description:
+        "Extracts PAN, Aadhaar, and salary details from PDFs using advanced OCR and regex validation",
+      gradient: "from-blue-500 to-indigo-500"
+    },
+    {
+      icon: Zap,
+      title: "Real-Time Underwriting",
+      description:
+        "Instant credit score checks, eligibility calculation, and EMI computation in under 3 minutes",
+      gradient: "from-violet-500 to-indigo-500"
+    },
+    {
+      icon: Shield,
+      title: "RBI-Compliant KYC",
+      description:
+        "Automated verification against CRM database with pattern matching for Indian documents",
+      gradient: "from-emerald-500 to-teal-500"
+    },
+    {
+      icon: Brain,
+      title: "Natural Language Understanding",
+      description:
+        "Groq-powered Llama 3.3 70B for conversational sales, negotiation, and customer engagement",
+      gradient: "from-cyan-500 to-blue-500"
+    },
+    {
+      icon: Database,
+      title: "Persistent Database",
+      description:
+        "10 pre-seeded dummy customers in SQLite with full loan application history tracking",
+      gradient: "from-slate-500 to-slate-600"
+    }
+  ];
+
+  return (
+    <section
+      id="features"
+      ref={ref}
+      className="py-32 bg-white dark:bg-slate-950 relative overflow-hidden"
+    >
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
+
+      <div className="max-w-7xl mx-auto px-4 md:px-8 relative">
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={isInView ? { scale: 1 } : {}}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-sm font-bold mb-6 border-2 border-indigo-200 dark:border-indigo-800"
+          >
+            <Sparkles className="w-4 h-4" />
+            Powered by Cutting-Edge AI
+          </motion.div>
+          <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-6">
+            Built for{" "}
+            <span className="bg-gradient-to-r from-indigo-600 to-indigo-700 bg-clip-text text-transparent">
+              Instant & Intelligent Lending.
+            </span>
+          </h2>
+          <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
+            Every feature designed Faster Responses, Faster Approvals
+          </p>
+        </motion.div>
+
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+          className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          {features.map((feature, i) => (
+            <motion.div
+              key={i}
+              variants={scaleIn}
+              whileHover={{ y: -10, scale: 1.02 }}
+              className="group relative p-7 rounded-3xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden"
+            >
+              {/* Gradient Background on Hover */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                whileHover={{ opacity: 0.1 }}
+                className={`absolute inset-0 bg-gradient-to-br ${feature.gradient}`}
+              />
+
+              <div className="relative z-10">
+                <motion.div
+                  whileHover={{ rotate: 360, scale: 1.2 }}
+                  transition={{ duration: 0.6 }}
+                  className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.gradient} text-white mb-5 shadow-lg`}
+                >
+                  <feature.icon className="w-8 h-8" strokeWidth={2.5} />
+                </motion.div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-3">
+                  {feature.title}
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                  {feature.description}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ==================== DEMO SECTION ====================
+
+function DemoSection() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+
+  return (
+    <section
+      id="demo"
+      ref={ref}
+      className="py-32 bg-gradient-to-br from-indigo-700 via-indigo-600 to-indigo-700 dark:from-slate-900 dark:via-indigo-950 dark:to-slate-900 relative overflow-hidden"
+    >
+      {/* Animated Shapes */}
+      <motion.div
+        animate={{ rotate: 360, scale: [1, 1.2, 1] }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-white/10 blur-3xl"
+      />
+      <motion.div
+        animate={{ rotate: -360, scale: [1.2, 1, 1.2] }}
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-white/10 blur-3xl"
+      />
+
+      <div className="max-w-7xl mx-auto px-4 md:px-8 relative">
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6 }}
+          className="text-center"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={isInView ? { scale: 1 } : {}}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm text-white text-sm font-bold mb-8 border-2 border-white/30"
+          >
+            <Play className="w-4 h-4" />
+            See It In Action
+          </motion.div>
+
+          <h2 className="text-4xl md:text-6xl font-black text-white mb-8">
+            Experience the Future of{" "}
+            <span className="inline-block">
+              <span className="relative">
+                Loan Processing
+                <motion.span
+                  animate={{ scaleX: [0, 1] }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                  className="absolute bottom-2 left-0 right-0 h-3 bg-white/30 -z-10 origin-left rounded-full"
+                />
+              </span>
+            </span>
+          </h2>
+
+          <p className="text-xl text-white/90 mb-12 max-w-3xl mx-auto leading-relaxed">
+            Watch how AURUM transforms a complex loan journey into a
+            simple conversation
+          </p>
+
+          {/* Video Placeholder */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={isInView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="relative max-w-5xl mx-auto aspect-video rounded-3xl overflow-hidden shadow-2xl bg-slate-900 border-4 border-white/20"
+          >
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-24 h-24 rounded-full bg-white flex items-center justify-center shadow-2xl group"
+              >
+                <Play className="w-10 h-10 text-indigo-600 ml-2 group-hover:scale-110 transition-transform" />
+              </motion.button>
+            </div>
+
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent pointer-events-none" />
+          </motion.div>
+
+          {/* Stats Below Video */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8"
+          >
+            {[
+              { value: "2.5min", label: "Average Processing Time" },
+              { value: "98%", label: "Accuracy Rate" },
+              { value: "10K+", label: "Loans Processed" },
+              { value: "4.9★", label: "Customer Rating" }
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.8 + i * 0.1 }}
+                className="text-center"
+              >
+                <div className="text-4xl md:text-5xl font-black text-white mb-2">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-white/80 font-semibold">
+                  {stat.label}
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ==================== CTA SECTION ====================
+
+function CTASection() {
+  const navigate = useNavigate();
+
+  return (
+    <section
+      id="pricing"
+      className="py-32 bg-white dark:bg-slate-950 relative overflow-hidden"
+    >
+      {/* Background Elements */}
+      <div className="absolute inset-0 bg-slate-50 dark:bg-slate-900" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:50px_50px]" />
+
+      <div className="max-w-7xl mx-auto px-4 md:px-8 relative">
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center max-w-4xl mx-auto"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            whileInView={{ scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-sm font-bold mb-8 border-2 border-indigo-200 dark:border-indigo-800"
+          >
+            <ZapIcon className="w-4 h-4" />
+            Ready to Transform Your Loan Process?
+          </motion.div>
+
+          <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-8">
+            Start Your{" "}
+            <span className="bg-gradient-to-r from-indigo-600 to-indigo-700 bg-clip-text text-transparent">
+              SmartLoan Journey
+            </span>{" "}
+            Today
+          </h2>
+
+          <p className="text-xl text-slate-600 dark:text-slate-300 mb-12 leading-relaxed">
+            Join thousands of satisfied customers who've experienced
+            lightning-fast loan approvals with our AI-powered platform
+          </p>
+
+          <div className="flex flex-wrap gap-6 justify-center">
+            <motion.button
+              whileHover={{
+                scale: 1.05,
+                boxShadow: "0 25px 50px rgba(99, 102, 241, 0.4)"
+              }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/signup")}
+              className="group relative px-10 py-5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold text-lg shadow-2xl overflow-hidden"
+            >
+              <motion.span
+                className="absolute inset-0 bg-gradient-to-r from-indigo-700 to-indigo-600"
+                initial={{ x: "100%" }}
+                whileHover={{ x: 0 }}
+                transition={{ duration: 0.3 }}
+              />
+              <span className="relative flex items-center gap-3">
+                <Sparkles className="w-6 h-6" />
+                Get Started Free
+                <motion.div
+                  animate={{ x: [0, 5, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  <ArrowRight className="w-6 h-6" />
+                </motion.div>
+              </span>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/help")}
+              className="px-10 py-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold text-lg hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-all"
+            >
+              Learn More
+            </motion.button>
+          </div>
+
+          {/* Trust Badges */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="mt-16 flex flex-wrap items-center justify-center gap-8 text-sm text-slate-500 dark:text-slate-400 font-semibold"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                <span className="text-white text-xs">✓</span>
+              </div>
+              RBI Compliant
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                <span className="text-white text-xs">✓</span>
+              </div>
+              Bank-Grade Security
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                <span className="text-white text-xs">✓</span>
+              </div>
+              24/7 Support
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ==================== FOOTER ====================
+
+function Footer() {
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <footer className="bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-16">
+        <div className="grid md:grid-cols-4 gap-12 mb-12">
+          {/* Brand */}
+          <div className="md:col-span-2">
+            <Link to="/" className="flex items-center gap-2.5 group mb-6">
+              <motion.div
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
+                className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center shadow-lg"
+              >
+                <Bot className="w-6 h-6 text-white" strokeWidth={2.5} />
+              </motion.div>
+              <div className="flex flex-col leading-none">
+                <span className="text-slate-900 dark:text-white font-black text-base tracking-tight">
+                  AURUM
+                </span>
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold tracking-wider flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  Aura
+                </span>
+              </div>
+            </Link>
+            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed max-w-sm">
+              AURUM Loan. Built with passion for EY Techathon 2025.
+              Transforming loan experiences with cutting-edge AI technology.
+            </p>
+          </div>
+
+          {/* Quick Links */}
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-white mb-4">
+              Product
+            </h3>
+            <ul className="space-y-3">
+              {["Features", "Demo", "Pricing", "FAQ"].map((item) => (
+                <li key={item}>
+                  <a
+                    href={`#${item.toLowerCase()}`}
+                    className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm font-medium"
+                  >
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-white mb-4">
+              Legal
+            </h3>
+            <ul className="space-y-3">
+              {[
+                { label: "Privacy", href: "#" },
+                { label: "Terms", href: "#" },
+                { label: "Contact", href: "#" },
+                { label: "Help Center", href: "/help" }
+              ].map((item) => (
+                <li key={item.label}>
+                  <Link
+                    to={item.href}
+                    className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm font-medium"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-slate-600 dark:text-slate-400 text-sm">
+            © {currentYear} AURUM. All rights reserved.
+          </p>
+
+          {/* Social Links */}
+          <div className="flex items-center gap-4">
+            {[
+              { icon: Github, href: "#" },
+              { icon: Twitter, href: "#" },
+              { icon: Linkedin, href: "#" },
+              { icon: Mail, href: "#" }
+            ].map((social, i) => (
+              <motion.a
+                key={i}
+                href={social.href}
+                whileHover={{ scale: 1.1, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-9 h-9 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-indigo-100 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
+              >
+                <social.icon className="w-4 h-4" />
+              </motion.a>
+            ))}
+          </div>
+        </div>
       </div>
     </footer>
   );
 }
 
-// Floating chat dock bottom-right
-function ChatDock() {
-  return (
-    <motion.div
-      initial={{ y: 40, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 160, damping: 16 }}
-      className="fixed right-4 bottom-4 z-40"
-    >
-      <button className="group flex items-center gap-3 rounded-full bg-slate-900 text-white dark:bg-indigo-500 px-4 py-2 text-xs shadow-xl">
-        <div className="relative h-7 w-7 rounded-full bg-gradient-to-tr from-slate-900 via-indigo-500 to-sky-400 flex items-center justify-center text-[11px] font-semibold">
-          AI
-          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-slate-900 dark:border-slate-950 shadow-sm" />
-        </div>
-        <div className="flex flex-col items-start leading-tight">
-          <span className="font-semibold">Talk to Master Agent</span>
-          <span className="text-[10px] text-slate-300/90 group-hover:text-slate-100">
-            Shift + ⏎ to open full console
-          </span>
-        </div>
-      </button>
-    </motion.div>
-  );
-}
+// ==================== LOGIN PAGE ====================
 
-// ------------------ HERO: 3D orb + animated chat ------------------
-
-function Hero() {
-  const navigate = useNavigate();
-  const typed = useTypingLoop(
-    [
-      "Understands RBI-style policy rules.",
-      "Speaks natural Hinglish about money.",
-      "Explains complex EMIs with charts.",
-    ],
-    35,
-    1400
-  );
-  const { scrollYProgress } = useScroll();
-  const orbY = useTransform(scrollYProgress, [0, 0.5], [0, 40]);
-  const orbScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.92]);
-
-  return (
-    <section
-      id="hero"
-      className="relative overflow-hidden border-b border-slate-100/70 dark:border-slate-900/70"
-    >
-      {/* BG blobs */}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900" />
-      <div className="pointer-events-none absolute -top-40 -left-32 h-72 w-72 rounded-full bg-indigo-300/18 blur-3xl dark:bg-indigo-500/12" />
-      <div className="pointer-events-none absolute -bottom-40 -right-32 h-72 w-72 rounded-full bg-emerald-300/18 blur-3xl dark:bg-emerald-500/12" />
-
-      <div className="max-w-6xl mx-auto px-4 md:px-6 pt-16 pb-20 md:pt-24 md:pb-24">
-        <div className="grid lg:grid-cols-[minmax(0,1.1fr),minmax(0,1fr)] gap-10 items-center">
-          {/* Left column */}
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/60 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/70 px-3 py-1 text-[11px] text-slate-600 dark:text-slate-300 shadow-sm mb-4">
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-[9px] dark:bg-emerald-500/10 dark:text-emerald-300">
-                ●
-              </span>
-              AI chatbot OS for BFSI experiences
-            </div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-slate-900 dark:text-slate-50"
-            >
-              One chatbot UI <br className="hidden md:block" />
-              to run every{" "}
-              <span className="relative inline-block">
-                <span className="relative z-10">money conversation</span>
-                <span className="absolute inset-x-0 -bottom-1 h-2 bg-gradient-to-r from-indigo-300/80 via-sky-300/80 to-emerald-300/80 dark:from-indigo-500/80 dark:via-sky-500/80 dark:to-emerald-500/80 blur-[1px]" />
-              </span>
-              .
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.15 }}
-              className="mt-4 text-sm md:text-base text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed"
-            >
-              Tata Capital ChatOS lets your customers apply, upgrade and
-              understand financial products through a single, fluid,
-              personality‑driven chatbot that plugs into your real stack.
-            </motion.p>
-
-            {/* Typing line */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.25 }}
-              className="mt-4 text-xs md:text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2 font-mono"
-            >
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[9px] text-white dark:bg-indigo-500">
-                AI
-              </span>
-              <span className="relative">
-                <span>{typed}</span>
-                <span className="inline-block w-[2px] h-4 bg-slate-600 dark:bg-slate-200 ml-[1px] animate-pulse align-middle" />
-              </span>
-            </motion.div>
-
-            {/* CTAs */}
-            <motion.div
-              className="mt-7 flex flex-wrap gap-3 items-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              <button
-                onClick={() => navigate("/signup")}
-                className="px-6 py-3 rounded-full bg-slate-900 text-white dark:bg-indigo-500 text-xs md:text-sm font-semibold shadow-lg shadow-slate-900/30 hover:bg-indigo-600"
-              >
-                Launch full‑screen experience
-              </button>
-              <a
-                href="#canvas"
-                className="px-5 py-3 rounded-full border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-950 text-xs md:text-sm text-slate-700 dark:text-slate-200 hover:border-indigo-400"
-              >
-                See how it thinks
-              </a>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                Works on web, in‑app widgets and WhatsApp.
-              </span>
-            </motion.div>
-
-            {/* Micro metrics */}
-            <div className="mt-8 grid grid-cols-3 gap-4 max-w-md text-xs">
-              <div className="p-3.5 rounded-2xl bg-white/90 dark:bg-slate-950/80 border border-slate-100 dark:border-slate-800 shadow-sm">
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">
-                  NPS uplift
-                </div>
-                <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                  +24
-                  <span className="text-[11px] ml-1 text-emerald-500">pts*</span>
-                </p>
-                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                  By replacing rigid menus with natural chat for support.
-                </p>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-white/90 dark:bg-slate-950/80 border border-slate-100 dark:border-slate-800 shadow-sm">
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">
-                  CS deflection
-                </div>
-                <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                  60
-                  <span className="text-[11px] ml-1 text-slate-500">%</span>
-                </p>
-                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                  L1 queries routed to bot, not phone lines.
-                </p>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-white/90 dark:bg-slate-950/80 border border-slate-100 dark:border-slate-800 shadow-sm">
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">
-                  Time to yes
-                </div>
-                <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                  &lt; 3
-                  <span className="text-[11px] ml-1 text-slate-500">min</span>
-                </p>
-                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                  From “Hi” to conditional approval for simple journeys.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: animated orb + chat UI */}
-          <div className="relative">
-            {/* 3D orb */}
-            <motion.div
-              style={{ y: orbY, scale: orbScale }}
-              className="absolute -top-10 right-10 h-32 w-32 md:h-40 md:w-40 rounded-full bg-gradient-to-tr from-indigo-500 via-sky-400 to-emerald-400 shadow-[0_0_80px_rgba(79,70,229,0.55)] blur-[1px] opacity-80"
-            />
-
-            <motion.div
-              initial={{ scale: 0.96, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="relative mx-auto w-full max-w-sm rounded-3xl bg-white/90 dark:bg-slate-950/90 border border-slate-100/90 dark:border-slate-800/80 shadow-soft backdrop-blur-xl p-4"
-            >
-              {/* Card header */}
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                    Tata Capital · ChatOS
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50">
-                    Unified Money Assistant
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                  Live
-                </div>
-              </div>
-
-              {/* Quick replies */}
-              <div className="flex flex-wrap gap-2 mb-3 text-[10px]">
-                {quickReplies.map((chip) => (
-                  <button
-                    key={chip}
-                    className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-400"
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
-
-              {/* Chat bubbles */}
-              <div className="space-y-3 text-[11px]">
-                <div className="flex items-start gap-2">
-                  <div className="h-6 w-6 rounded-full bg-slate-900 text-white dark:bg-indigo-500 flex items-center justify-center text-[9px]">
-                    AI
-                  </div>
-                  <div className="max-w-[80%] rounded-2xl bg-slate-900 text-white dark:bg-indigo-500/90 px-3 py-2">
-                    Hey, I am your personal money guide. Want to{" "}
-                    <span className="underline">borrow</span>,{" "}
-                    <span className="underline">save</span> or{" "}
-                    <span className="underline">understand</span>?
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <div className="max-w-[75%] rounded-2xl bg-slate-100 dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-50">
-                    I want to check if I can get a 3L travel loan this month.
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <div className="h-6 w-6 rounded-full bg-slate-900 text-white dark:bg-indigo-500 flex items-center justify-center text-[9px]">
-                    AI
-                  </div>
-                  <div className="max-w-[80%] rounded-2xl bg-slate-50 dark:bg-slate-900/80 px-3 py-2 text-slate-800 dark:text-slate-100">
-                    Perfect. I will read your income, obligations and credit via
-                    connected systems, then show you a{" "}
-                    <span className="font-semibold">“green / amber / red”</span>{" "}
-                    decision with reasons.
-                  </div>
-                </div>
-
-                {/* Typing indicator */}
-                <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                  <div className="h-5 w-5 rounded-full bg-slate-900 text-white dark:bg-indigo-500 flex items-center justify-center text-[8px]">
-                    …
-                  </div>
-                  <div className="flex gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-500 animate-bounce [animation-delay:-0.2s]" />
-                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-500 animate-bounce [animation-delay:-0.1s]" />
-                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-500 animate-bounce" />
-                  </div>
-                  <span>ChatOS is thinking with underwriting rules…</span>
-                </div>
-              </div>
-
-              {/* Input */}
-              <div className="mt-4 flex items-center gap-2">
-                <input
-                  className="flex-1 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/70 px-3 py-1.5 text-[11px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  placeholder="Type like WhatsApp. It will keep up."
-                />
-                <button className="h-8 px-3 rounded-full bg-slate-900 text-white dark:bg-indigo-500 text-[11px] font-medium hover:bg-indigo-600">
-                  Send
-                </button>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500">
-                <span>Supports: text · voice · quick replies</span>
-                <span>SDK · Web · Whatsapp</span>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ------------------ Sections: Why, Canvas, CTA ------------------
-
-function WhySection() {
-  return (
-    <section
-      id="why"
-      className="max-w-6xl mx-auto px-4 md:px-6 py-14 space-y-8"
-    >
-      <div className="grid md:grid-cols-2 gap-8 items-start">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-50">
-            Built like a product, not a demo bot
-          </h2>
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 max-w-xl">
-            Every interaction is designed like a real chatbot UI: clear
-            hierarchy, quick actions, visual states, and micro‑interactions that
-            make AI feel alive, not robotic. [web:37][web:40]
-          </p>
-          <ul className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <li>– Rich chat surface: chips, links, multi‑turn clarifications.</li>
-            <li>– Domain‑aware journeys for loans, cards and savings.</li>
-            <li>– Configurable personalities for retail vs. HNI vs. SMB.</li>
-          </ul>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 shadow-sm text-xs text-slate-600 dark:text-slate-300">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
-              UX patterns
-            </span>
-            <span className="rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 px-2 py-0.5">
-              Borrowed from best‑in‑class chat UIs
-            </span>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span>Message layout</span>
-              <span className="font-mono text-[11px]">
-                One‑column, ChatGPT‑style [web:40]
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Quick actions</span>
-              <span className="font-mono text-[11px]">Quick‑reply chips</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Personality</span>
-              <span className="font-mono text-[11px]">
-                Warm, RBI‑aware tone
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Feedback</span>
-              <span className="font-mono text-[11px]">
-                Typing & thinking states
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function CanvasSection() {
-  return (
-    <section
-      id="canvas"
-      className="max-w-6xl mx-auto px-4 md:px-6 pb-16 space-y-10"
-    >
-      <div className="grid md:grid-cols-[1.2fr,1fr] gap-8 items-start">
-        <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                Live canvas of a conversation
-              </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                How ChatOS sees a chat under the hood.
-              </p>
-            </div>
-            <span className="rounded-full bg-slate-900 text-white dark:bg-indigo-500 px-2 py-0.5 text-[10px]">
-              JSON · events · tools
-            </span>
-          </div>
-          <pre className="text-[11px] font-mono bg-slate-900 text-slate-100 dark:bg-black/90 rounded-xl p-4 overflow-x-auto shadow-inner">
-{`{
-  "session_id": "rithika-travel-3L",
-  "intent": "personal_loan_travel",
-  "signals": {
-    "channel": "web",
-    "language": "en-IN",
-    "risk_profile": "prime"
-  },
-  "timeline": [
-    "user: I want 3L travel loan",
-    "tool: check_offer_mart",
-    "tool: run_eligibility",
-    "ai: explain_decision_with_emis"
-  ],
-  "decision": {
-    "traffic_light": "green",
-    "max_amount": 500000,
-    "reasons": ["stable_income", "clean_bureau", "low_obligations"]
-  }
-}`}
-          </pre>
-        </div>
-
-        <div className="space-y-4 text-sm text-slate-600 dark:text-slate-300">
-          <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-            Designed to plug into real stacks
-          </h3>
-          <p>
-            Underneath the UI, ChatOS streams tokens, tools and decisions in a
-            structured way so your risk, product and compliance teams can trust
-            what the bot is doing. [web:43][web:52]
-          </p>
-          <ul className="space-y-2">
-            <li>– Tools for offer mart, KYC, underwriting, collections.</li>
-            <li>– Guardrails: policy prompts + rate‑limiters + PII filters.</li>
-            <li>– Observability hooks for replaying entire conversations.</li>
-          </ul>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            The same engine can power RM co‑pilots and customer‑facing bots
-            without rewriting flows.
-          </p>
-        </div>
-      </div>
-
-      {/* CTA stripe */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-r from-slate-900 via-indigo-700 to-sky-700 dark:from-slate-900 dark:via-indigo-600 dark:to-sky-600 px-5 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-sm text-slate-100">
-        <div>
-          <div className="text-xs uppercase tracking-wide text-slate-300">
-            Next step
-          </div>
-          <div className="text-lg font-semibold">
-            Put this chatbot on a big screen and walk judges through a full
-            journey live.
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            to="/signup"
-            className="px-4 py-2 rounded-full bg-white text-slate-900 text-xs font-semibold hover:bg-slate-100"
-          >
-            Create sandbox account
-          </Link>
-          <Link
-            to="/login"
-            className="px-4 py-2 rounded-full border border-slate-300/70 text-xs font-semibold hover:bg-slate-50/10"
-          >
-            Open console
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ------------------ Auth pages ------------------
+// ==================== AUTH SHELL ====================
 
 function AuthShell({ title, subtitle, children }) {
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-12">
       <motion.div
-        initial={{ y: 10, opacity: 0 }}
+        initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="w-full max-w-md bg-white dark:bg-slate-950 rounded-3xl p-8 shadow-soft border border-slate-100 dark:border-slate-800"
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md"
       >
-        <div className="mb-5">
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
-            {title}
-          </h3>
-          {subtitle && (
-            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              {subtitle}
-            </p>
-          )}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border-2 border-slate-200 dark:border-slate-800 p-8">
+          {/* Icon Header */}
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-700 text-white mb-4 shadow-lg"
+            >
+              <Lock className="w-8 h-8" strokeWidth={2.5} />
+            </motion.div>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="text-slate-600 dark:text-slate-400">
+                {subtitle}
+              </p>
+            )}
+          </div>
+          {children}
         </div>
-        {children}
       </motion.div>
     </div>
   );
 }
+
+// ==================== LOGIN ====================
 
 export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const from = location.state?.from?.pathname || '/customer';
 
@@ -648,16 +1293,13 @@ export function Login() {
       const result = await loginUser(credentials);
       console.log('✅ Login success:', result.user.role);
       
-      // ✅ Store ONLY in localStorage (no context needed)
       localStorage.setItem('user', JSON.stringify(result.user));
-
       console.log(result.user);
       
-      // ✅ ROLE-BASED NAVIGATION
       if (result.user.role === 'admin') {
         navigate('/admin', { replace: true });
       } else {
-        navigate('/customer', { replace: true });  // Customer default
+        navigate('/customer', { replace: true });
       }
       
     } catch (err) {
@@ -670,74 +1312,107 @@ export function Login() {
 
   return (
     <AuthShell
-      title="Sign in to ChatOS"
-      subtitle="Access projects, journeys and analytics."
+      title="Welcome Back"
+      subtitle="Sign in to continue to SmartLoan AI"
     >
-      <form onSubmit={handle} className="space-y-4 text-sm">
+      <form onSubmit={handle} className="space-y-5">
         {error && (
-          <div className="text-red-500 text-xs bg-red-50 dark:bg-red-900/20 p-2 rounded">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-semibold"
+          >
             {error}
-          </div>
+          </motion.div>
         )}
+
+        {/* Email */}
         <div>
-          <label className="text-slate-600 dark:text-slate-300 text-xs">
-            Work email
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+            Email Address
           </label>
-          <input
-            required
-            name="email"
-            type="email"
-            className="w-full mt-1 px-3 py-2 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            placeholder="you@company.com"
-          />
+          <div className="relative">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              required
+              name="email"
+              type="email"
+              className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none transition-all"
+              placeholder="you@example.com"
+            />
+          </div>
         </div>
+
+        {/* Password */}
         <div>
-          <label className="text-slate-600 dark:text-slate-300 text-xs">
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
             Password
           </label>
-          <input
-            required
-            name="password"
-            type="password"
-            className="w-full mt-1 px-3 py-2 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            placeholder="••••••••"
-          />
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              required
+              name="password"
+              type={showPassword ? "text" : "password"}
+              className="w-full pl-12 pr-12 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none transition-all"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            >
+              {showPassword ? (
+                <EyeOff className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
+            </button>
+          </div>
         </div>
-        <div className="flex items-center justify-between text-xs">
-          <a
-            href="#"
-            className="text-indigo-600 dark:text-indigo-400 hover:underline"
-          >
-            Forgot password?
-          </a>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-slate-900 text-white dark:bg-indigo-500 rounded-full text-xs font-medium hover:bg-indigo-600 disabled:opacity-50"
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </div>
+
+        {/* Submit Button */}
+        <motion.button
+          type="submit"
+          disabled={loading}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <span>Signing in...</span>
+          ) : (
+            <>
+              Sign In
+              <ArrowRight className="w-5 h-5" />
+            </>
+          )}
+        </motion.button>
       </form>
 
-      <div className="mt-5 text-xs text-slate-600 dark:text-slate-300">
-        New here?{" "}
-        <Link
-          to="/signup"
-          className="text-indigo-600 dark:text-indigo-400 hover:underline"
-        >
-          Create an account
-        </Link>
+      {/* Footer */}
+      <div className="mt-8 text-center">
+        <p className="text-slate-600 dark:text-slate-400 text-sm">
+          Don't have an account?{" "}
+          <Link
+            to="/signup"
+            className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+          >
+            Sign up
+          </Link>
+        </p>
       </div>
     </AuthShell>
   );
 }
 
+// ==================== SIGNUP ====================
 
 export function Signup() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handle = async (e) => {
     e.preventDefault();
@@ -765,110 +1440,157 @@ export function Signup() {
 
   return (
     <AuthShell
-      title="Create your ChatOS space"
-      subtitle="Spin up a sandbox for experiments."
+      title="Create Account"
+      subtitle="Start your SmartLoan journey today"
     >
-      <form onSubmit={handle} className="space-y-4 text-sm">
+      <form onSubmit={handle} className="space-y-5">
         {error && (
-          <div className="text-red-500 text-xs bg-red-50 dark:bg-red-900/20 p-2 rounded">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-semibold"
+          >
             {error}
-          </div>
+          </motion.div>
         )}
+
+        {/* Full Name */}
         <div>
-          <label className="text-slate-600 dark:text-slate-300 text-xs">
-            Full name
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+            Full Name
           </label>
-          <input
-            required
-            name="fullname"
-            type="text"
-            className="w-full mt-1 px-3 py-2 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            placeholder="Rithika Sharma"
-          />
+          <div className="relative">
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              required
+              name="fullname"
+              type="text"
+              className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none transition-all"
+              placeholder="John Doe"
+            />
+          </div>
         </div>
+
+        {/* Email */}
         <div>
-          <label className="text-slate-600 dark:text-slate-300 text-xs">
-            Work email
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+            Email Address
           </label>
-          <input
-            required
-            name="email"
-            type="email"
-            className="w-full mt-1 px-3 py-2 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            placeholder="you@company.com"
-          />
+          <div className="relative">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              required
+              name="email"
+              type="email"
+              className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none transition-all"
+              placeholder="you@example.com"
+            />
+          </div>
         </div>
+
+        {/* Password */}
         <div>
-          <label className="text-slate-600 dark:text-slate-300 text-xs">
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
             Password
           </label>
-          <input
-            required
-            name="password"
-            type="password"
-            className="w-full mt-1 px-3 py-2 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            placeholder="Create a strong password"
-          />
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              required
+              name="password"
+              type={showPassword ? "text" : "password"}
+              className="w-full pl-12 pr-12 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none transition-all"
+              placeholder="Create a strong password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            >
+              {showPassword ? (
+                <EyeOff className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
+            </button>
+          </div>
         </div>
-        <div className="flex items-center justify-between">
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-slate-900 text-white dark:bg-indigo-500 rounded-full text-xs font-medium hover:bg-indigo-600 disabled:opacity-50"
-          >
-            {loading ? 'Creating...' : 'Create account'}
-          </button>
-        </div>
+
+        {/* Submit Button */}
+        <motion.button
+          type="submit"
+          disabled={loading}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <span>Creating account...</span>
+          ) : (
+            <>
+              Create Account
+              <ArrowRight className="w-5 h-5" />
+            </>
+          )}
+        </motion.button>
       </form>
 
-      <div className="mt-5 text-xs text-slate-600 dark:text-slate-300">
-        Already have an account?{" "}
-        <Link
-          to="/login"
-          className="text-indigo-600 dark:text-indigo-400 hover:underline"
-        >
-          Login
-        </Link>
+      {/* Footer */}
+      <div className="mt-8 text-center">
+        <p className="text-slate-600 dark:text-slate-400 text-sm">
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+          >
+            Sign in
+          </Link>
+        </p>
       </div>
     </AuthShell>
   );
 }
 
 
-// ------------------ Home wrapper ------------------
+// ==================== HOME COMPOSITION ====================
 
-export function Home() {
+function Home() {
   return (
     <>
+      <MainNav />
       <Hero />
-      <WhySection />
-      <CanvasSection />
-      <MainFooter />
-      <ChatDock />
+      <FeaturesSection />
+      <DemoSection />
+      <CTASection />
+      <Footer />
     </>
   );
 }
 
 
-// ------------------ Root App ------------------
+// ==================== ROOT APP ====================
 
 export default function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-950 text-slate-800 dark:text-slate-100 font-sans">
+    <ThemeProvider>
+      <Router>
         <MainNav />
-        <main>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/customer" element={<CustomerDashboard />} />
-            <Route path="/help" element={<HelpCenter />} />
-          </Routes>
-        </main>
-        <ChatDock />
-      </div>
-    </Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/customer" element={<CustomerDashboard />} />
+          <Route path="/help" element={<HelpCenter />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
+
+
+
+
+
+// Export individual components if needed elsewhere
+export { Home, Hero, FeaturesSection, DemoSection, CTASection, Footer, MainNav };

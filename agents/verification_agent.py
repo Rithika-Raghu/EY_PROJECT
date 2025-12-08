@@ -2,6 +2,7 @@ import re
 from PyPDF2 import PdfReader
 import os
 
+
 class VerificationAgent:
     """Enhanced KYC verification with proper document extraction"""
     
@@ -29,7 +30,7 @@ class VerificationAgent:
             return None, f"Error reading PDF: {str(e)}"
     
     def extract_pan_number(self, text):
-        """Extract PAN number using regex pattern [web:16][web:18]"""
+        """Extract PAN number using regex pattern"""
         # PAN format: ABCDE1234F (5 letters + 4 digits + 1 letter)
         pattern = r'[A-Z]{5}[0-9]{4}[A-Z]{1}'
         text_upper = text.upper()
@@ -37,7 +38,7 @@ class VerificationAgent:
         return matches[0] if matches else None
     
     def extract_aadhaar_number(self, text):
-        """Extract Aadhaar number using regex pattern [web:16]"""
+        """Extract Aadhaar number using regex pattern"""
         # Aadhaar format: 1234-5678-9012 or 1234 5678 9012
         pattern = r'\d{4}[\s\-]\d{4}[\s\-]\d{4}'
         matches = re.findall(pattern, text)
@@ -81,20 +82,27 @@ class VerificationAgent:
                 f"Extracted text preview: {text[:200]}..."
             ), False
         
-        # Get customer data from database
+        # ✅ Get customer data from unified users table
         customer = self.db.get_customer_by_phone(customer_phone)
         
-        if customer and customer["pan_number"]:
+        if customer and customer.get("pan_number"):
             # Verify against database
             if customer["pan_number"].upper() == pan_number.upper():
                 session["customer_data"]["pan_verified"] = True
                 session["customer_data"]["pan_number"] = pan_number
-                self.db.save_document(customer_phone, "PAN", filepath)
+                
+                # ✅ Save document with user_id instead of phone
+                user_id = customer.get("id")
+                if user_id:
+                    self.db.save_document(user_id, "PAN", filepath)
+                
+                # ✅ Use username instead of name
+                username = customer.get("username", "Customer")
                 
                 return (
                     f"✅ PAN Card Verified Successfully!\n"
                     f"📄 PAN Number: {pan_number}\n"
-                    f"👤 Name: {customer['name']}"
+                    f"👤 Name: {username}"
                 ), True
             else:
                 return (
@@ -106,7 +114,10 @@ class VerificationAgent:
             # No existing PAN in database, accept extracted one
             session["customer_data"]["pan_verified"] = True
             session["customer_data"]["pan_number"] = pan_number
-            self.db.save_document(customer_phone, "PAN", filepath)
+            
+            # ✅ Save document if customer exists
+            if customer and customer.get("id"):
+                self.db.save_document(customer["id"], "PAN", filepath)
             
             return (
                 f"✅ PAN Card Verified Successfully!\n"
@@ -123,20 +134,27 @@ class VerificationAgent:
                 f"Extracted text preview: {text[:200]}..."
             ), False
         
-        # Get customer data from database
+        # ✅ Get customer data from unified users table
         customer = self.db.get_customer_by_phone(customer_phone)
         
-        if customer and customer["aadhaar_number"]:
+        if customer and customer.get("aadhaar_number"):
             # Verify against database
             if customer["aadhaar_number"] == aadhaar_number:
                 session["customer_data"]["aadhaar_verified"] = True
                 session["customer_data"]["aadhaar_number"] = aadhaar_number
-                self.db.save_document(customer_phone, "Aadhaar", filepath)
+                
+                # ✅ Save document with user_id instead of phone
+                user_id = customer.get("id")
+                if user_id:
+                    self.db.save_document(user_id, "Aadhaar", filepath)
+                
+                # ✅ Use username instead of name
+                username = customer.get("username", "Customer")
                 
                 return (
                     f"✅ Aadhaar Card Verified Successfully!\n"
                     f"📄 Aadhaar Number: {aadhaar_number}\n"
-                    f"👤 Name: {customer['name']}"
+                    f"👤 Name: {username}"
                 ), True
             else:
                 return (
@@ -148,7 +166,10 @@ class VerificationAgent:
             # No existing Aadhaar in database, accept extracted one
             session["customer_data"]["aadhaar_verified"] = True
             session["customer_data"]["aadhaar_number"] = aadhaar_number
-            self.db.save_document(customer_phone, "Aadhaar", filepath)
+            
+            # ✅ Save document if customer exists
+            if customer and customer.get("id"):
+                self.db.save_document(customer["id"], "Aadhaar", filepath)
             
             return (
                 f"✅ Aadhaar Card Verified Successfully!\n"

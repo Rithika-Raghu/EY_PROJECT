@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../src/context/AuthContext";
-import { Sun, Moon, Bell, Search, ChevronRight, CreditCard, FileText, HelpCircle, Calculator, Upload, Wallet, TrendingUp, Users, Bot, LogOut, MessageCircle, Paperclip, Send } from "lucide-react";
+import { Sun, Moon, Bell, Search,ShieldCheck, ChevronRight, CreditCard, FileText, HelpCircle, Calculator, Upload, Wallet, TrendingUp, Users, Bot, LogOut, MessageCircle, Paperclip, Send } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -10,6 +10,11 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  BarChart,
+  Bar,
+  Cell,
+  PieChart,
+  Pie,
 } from "recharts";
 
 const languages = {
@@ -42,6 +47,37 @@ const languages = {
     uploadDoc: "दस्तावेज़ अपलोड करें",
   },
 };
+
+const loanTrendData = [
+  { month: "Jan", loans: 120, target: 150 },
+  { month: "Feb", loans: 150, target: 160 },
+  { month: "Mar", loans: 180, target: 170 },
+  { month: "Apr", loans: 200, target: 190 },
+  { month: "May", loans: 220, target: 210 }
+];
+
+const paymentData = [
+  { name: "EMI Paid", value: 47000, color: "#10b981" },
+  { name: "Principal", value: 35000, color: "#3b82f6" },
+  { name: "Interest", value: 12000, color: "#f59e0b" }
+];
+
+const creditScoreData = [
+  { category: "Payment History", score: 85, full: 100 },
+  { category: "Credit Utilization", score: 78, full: 100 },
+  { category: "Length of Credit", score: 92, full: 100 },
+  { category: "New Credit", score: 88, full: 100 }
+];
+
+const kycProgressData = [45, 75, 90]; // Pending, In Review, Completed
+
+const savingsData = [
+  { month: "Jan", saved: 25000 },
+  { month: "Feb", saved: 32000 },
+  { month: "Mar", saved: 45000 },
+  { month: "Apr", saved: 38000 },
+  { month: "May", saved: 52000 }
+];
 
 const emiData = [
   { month: "Jan", value: 35000 },
@@ -198,17 +234,18 @@ const CustomerDashboard = () => {
     }
   };
 
-  return (
-    <div className={`min-h-screen flex bg-gradient-to-br ${theme === "dark" ? "from-[#0A0E12] via-[#0D1216] to-black text-gray-200" : "from-gray-100 to-white text-gray-800"} transition-all`}>
+return (
+  <div className={`min-h-screen flex bg-gradient-to-br ${theme === "dark" ? "from-[#0A0E12] via-[#0D1216] to-black text-gray-200" : "from-gray-100 to-white text-gray-800"} transition-all`}>
 
-      {/* SIDEBAR */}
-      <aside className="w-72 border-r border-gray-700/40 p-6 hidden lg:flex flex-col">
-        <div className="flex items-center gap-3 mb-8">
+    {/* SIDEBAR (Unchanged) */}
+    <aside className="w-72 border-r border-gray-700/40 p-6 hidden lg:flex flex-col">
+       {/* ... existing sidebar code ... */}
+       <div className="flex items-center gap-3 mb-8">
           <div className="h-10 w-10 bg-gradient-to-br from-emerald-400 to-cyan-400 rounded-xl flex items-center justify-center font-bold text-black">
             {user?.username?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div>
-            <h1 className="text-lg font-semibold">Finomic Elite</h1>
+            <h1 className="text-lg font-semibold">AURUM</h1>
             <p className="text-xs opacity-70">{user?.email}</p>
           </div>
         </div>
@@ -243,10 +280,15 @@ const CustomerDashboard = () => {
             <LogOut size={18} /> {t("logout")}
           </button>
         </nav>
-      </aside>
+    </aside>
 
-      {/* MAIN CONTENT */}
-      <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+    {/* MAIN CONTENT AREA */}
+    <div className="flex-1 p-6 h-screen overflow-y-auto">
+      
+      {/* 1. HEADER & TOP STATS SECTION */}
+      <div className="space-y-6 mb-10">
+        
+        {/* Header */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
@@ -254,7 +296,7 @@ const CustomerDashboard = () => {
             </div>
             <div>
               <p className="font-semibold">Hello, {user?.username || 'User'}!</p>
-              <p className="text-sm opacity-70">Welcome back 👋</p>
+              <p className="text-sm opacity-70">Welcome back</p>
             </div>
           </div>
 
@@ -269,6 +311,7 @@ const CustomerDashboard = () => {
           </div>
         </header>
 
+        {/* Account Info Box */}
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 backdrop-blur-xl p-6 rounded-2xl border border-emerald-500/30">
           <h2 className="text-lg font-semibold mb-3">Account Information</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
@@ -283,6 +326,7 @@ const CustomerDashboard = () => {
           </div>
         </motion.div>
 
+        {/* Stats Grid (Top) */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           <FeatureCard icon={<Wallet />} title="Active Loan" value="₹ 15,00,000" />
           <FeatureCard icon={<CreditCard />} title="Monthly EMI" value="₹ 47,000" />
@@ -291,11 +335,114 @@ const CustomerDashboard = () => {
         </div>
       </div>
 
-      {/* ✅ CHATBOT WINDOW */}
-      {isChatOpen && (
-        <motion.div initial={{ opacity: 0, x: 300 }} animate={{ opacity: 1, x: 0 }} className="fixed right-6 bottom-6 w-96 h-[500px] bg-gray-800/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl flex flex-col z-50">
+      {/* 2. VISUALIZATION SECTION (BOTTOM) */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold opacity-90 border-l-4 border-emerald-500 pl-3">Financial Analytics</h2>
+        
+        {/* Charts Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-8">
           
-          {/* Header */}
+          {/* Chart 1: Loan Applications */}
+          <motion.div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 h-80 flex flex-col min-w-0">
+            <h3 className="font-semibold mb-4">Loan Applications</h3>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={loanTrendData}>
+                  <XAxis dataKey="month" hide />
+                  <YAxis hide />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} />
+                  <Line type="monotone" dataKey="loans" stroke="#10b981" strokeWidth={3} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+
+          {/* Chart 2: EMI Breakdown */}
+          <motion.div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 h-80 flex flex-col min-w-0">
+            <h3 className="font-semibold mb-4">EMI Breakdown</h3>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={paymentData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" dataKey="value">
+                    {paymentData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+
+          {/* Chart 3: Credit Score */}
+          <motion.div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 h-80 flex flex-col min-w-0">
+            <h3 className="font-semibold mb-4">Credit Score Analysis</h3>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={creditScoreData}>
+                   <XAxis dataKey="category" hide />
+                   <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} />
+                   <Bar dataKey="score" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+
+          {/* Chart 4: KYC Progress */}
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 h-80 flex flex-col min-w-0">
+            <div className="flex items-center gap-2 mb-6">
+              <Upload size={20} className="text-orange-400" />
+              <h3 className="font-semibold text-lg">KYC Progress</h3>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 bg-gray-700/30 rounded-full h-3">
+                  <div className="bg-gradient-to-r from-orange-400 to-red-500 h-3 rounded-full" style={{ width: "45%" }} />
+                </div>
+                <span className="text-sm font-semibold text-orange-400">45%</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 bg-gray-700/30 rounded-full h-3">
+                  <div className="bg-gradient-to-r from-emerald-400 to-teal-500 h-3 rounded-full" style={{ width: "75%" }} />
+                </div>
+                <span className="text-sm font-semibold text-emerald-400">75%</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 bg-gray-700/30 rounded-full h-3">
+                  <div className="bg-gradient-to-r from-blue-400 to-cyan-500 h-3 rounded-full" style={{ width: "90%" }} />
+                </div>
+                <span className="text-sm font-semibold text-blue-400">90%</span>
+              </div>
+            </div>
+            <p className="text-xs opacity-70 mt-auto text-center">2 documents pending</p>
+          </motion.div>
+          
+          {/* Chart 5: Savings Growth */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 h-80 flex flex-col min-w-0">
+            <div className="flex items-center gap-2 mb-4">
+              <Wallet size={20} className="text-green-400" />
+              <h3 className="font-semibold text-lg">Savings Growth</h3>
+            </div>
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={savingsData}>
+                  <XAxis dataKey="month" tick={{fill: '#9ca3af'}} />
+                  <YAxis tick={{fill: '#9ca3af'}} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} />
+                  <Line type="monotone" dataKey="saved" stroke="#059669" strokeWidth={4} dot={{ fill: "#059669", strokeWidth: 2 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+
+        </div>
+      </div>
+    </div>
+
+    {/* CHATBOT WINDOW (Unchanged) */}
+    {isChatOpen && (
+       <motion.div initial={{ opacity: 0, x: 300 }} animate={{ opacity: 1, x: 0 }} className="fixed right-6 bottom-6 w-96 h-[500px] bg-gray-800/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl flex flex-col z-50">
+         {/* ... existing chatbot code ... */}
           <div className="p-4 border-b border-gray-700/50 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-gradient-to-br from-emerald-400 to-cyan-400 rounded-xl flex items-center justify-center">
@@ -307,20 +454,15 @@ const CustomerDashboard = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={handleClearChat} className="p-1.5 rounded-lg hover:bg-red-500/20 hover:text-red-400 transition-all" title="Clear Chat">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
+              <button onClick={handleClearChat} className="p-1.5 rounded-lg hover:bg-red-500/20 hover:text-red-400 transition-all">
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
               </button>
               <button onClick={() => setIsChatOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-700/50 transition-all">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
           </div>
-
-          {/* Messages */}
+          
           <div className="flex-1 p-4 overflow-y-auto space-y-3">
             {messages.length === 0 ? (
               <div className="text-center py-8 opacity-50">
@@ -332,53 +474,29 @@ const CustomerDashboard = () => {
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[80%] p-3 rounded-2xl ${msg.role === 'user' ? 'bg-emerald-500 text-white' : 'bg-gray-700/50 border border-gray-600/50'}`}>
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                    <p className="text-xs opacity-70 mt-1">
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    <p className="text-xs opacity-70 mt-1">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                 </div>
               ))
             )}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-gray-700/50 p-3 rounded-2xl">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.1s]" />
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                  </div>
-                </div>
-              </div>
-            )}
+            {isLoading && <div className="flex justify-start"><div className="bg-gray-700/50 p-3 rounded-2xl">...</div></div>}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
           <div className="p-4 border-t border-gray-700/50">
             <div className="flex gap-2">
-              <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-xl bg-gray-700/30 hover:bg-gray-600/30">
-                <Paperclip size={18} />
-              </button>
+              <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-xl bg-gray-700/30 hover:bg-gray-600/30"><Paperclip size={18} /></button>
               <input ref={fileInputRef} type="file" onChange={handleFileUpload} className="hidden" accept=".pdf" />
-              <input
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
-                placeholder={t("typeMessage")}
-                className="flex-1 bg-gray-700/50 border border-gray-600/50 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-400/50"
-                disabled={isLoading}
-              />
-              <button onClick={sendMessage} disabled={!inputMessage.trim() || isLoading} className="p-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50">
-                <Send size={18} />
-              </button>
+              <input value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())} placeholder={t("typeMessage")} className="flex-1 bg-gray-700/50 border border-gray-600/50 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-400/50" disabled={isLoading} />
+              <button onClick={sendMessage} disabled={!inputMessage.trim() || isLoading} className="p-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50"><Send size={18} /></button>
             </div>
           </div>
-        </motion.div>
-      )}
-    </div>
-  );
-};
+       </motion.div>
+    )}
 
+  </div>
+);
+}
 const NavItem = ({ label, icon, link }) => (
   <Link to={link || '#'}>
     <button className="flex items-center justify-between px-4 py-3 hover:bg-white/10 rounded-xl w-full transition-all">
