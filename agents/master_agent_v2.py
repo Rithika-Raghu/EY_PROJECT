@@ -5,7 +5,6 @@ from PyPDF2 import PdfReader
 from google import genai
 from google.genai import types
 
-
 from agents.underwriting_agent import UnderwritingAgent
 from agents.sanction_agent import SanctionAgent
 from services.credit_bureau import CreditBureauAPI
@@ -45,14 +44,10 @@ class MasterAgent:
         self.underwriting_agent = UnderwritingAgent(self.credit_bureau, self.offer_mart)
         self.sanction_agent = SanctionAgent()
 
-        self.api_key = os.getenv("GEMINI_API_KEY", "AIzaSyBkcFjxM5flKoCK3Slxq5vkOJGyfYkhwwE")
-
-        # Configure Gemini legacy SDK
-        # genai.configure(api_key=self.api_key)
-
-        # Model handle to use
+        # Gemini API key
+        self.api_key = os.getenv("GEMINI_API_KEY", "AIzaSyChFI3jr7Z6F-yj6x0_EaNTUFtLawAiQws")
         self.genai_client = genai.Client(api_key=self.api_key)
-
+        
         # Sales Agent Chat (separate Gemini session for sales)
         self.sales_chat = None
 
@@ -137,38 +132,40 @@ class MasterAgent:
     def _init_sales_chat(self, session: Dict):
         """Initialize Gemini-powered Sales Agent chat."""
         customer_name = session["customer_data"].get("name", "Customer")
-
+        
         SALES_SYSTEM_INSTRUCTION = f"""
-    You are a friendly, persuasive sales agent for Tata Capital Personal Loans talking to {customer_name}.
+You are a friendly, persuasive sales agent for Tata Capital Personal Loans talking to {customer_name}.
 
-    Your goals:
-    1. Understand their loan purpose (home renovation, wedding, business, education, medical, travel, etc.)
-    2. Discuss and negotiate loan amount
-    3. Suggest optimal tenure (12-60 months)
-    4. Explain benefits: competitive rates from 10.5% p.a., flexible tenure, instant approval
-    5. Handle objections with empathy
-    6. Close the deal and get customer agreement to proceed
+Your goals:
+1. Understand their loan purpose (home renovation, wedding, business, education, medical, travel, etc.)
+2. Discuss and negotiate loan amount
+3. Suggest optimal tenure (12-60 months)
+4. Explain benefits: competitive rates from 10.5% p.a., flexible tenure, instant approval
+5. Handle objections with empathy
+6. Close the deal and get customer agreement to proceed
 
-    Guidelines:
-    - Be warm, professional, and persuasive
-    - Use emojis sparingly (💰 🏠 💼 ✅)
-    - Ask ONE question at a time
-    - When customer agrees to proceed, say exactly: "SALES_COMPLETE: Let's move forward with your application"
-    - Use the calc_emi tool to show EMI calculations when discussing amounts
-    - Use check_eligibility to validate affordability
+Guidelines:
+- Be warm, professional, and persuasive
+- Use emojis sparingly (💰 🏠 💼 ✅)
+- Ask ONE question at a time
+- When customer agrees to proceed, say exactly: "SALES_COMPLETE: Let's move forward with your application"
+- Use the calc_emi tool to show EMI calculations when discussing amounts
+- Use check_eligibility to validate affordability
 
-    Do NOT:
-    - Collect formal application details (purpose/amount/tenure as form fields) - just discuss naturally
-    - Perform underwriting or approval
-    - Ask for documents
-    """
+Do NOT:
+- Collect formal application details (purpose/amount/tenure as form fields) - just discuss naturally
+- Perform underwriting or approval
+- Ask for documents
+"""
 
         self.sales_chat = self.genai_client.chats.create(
             model="gemini-2.5-flash",
-            config={
-                "system_instruction": SALES_SYSTEM_INSTRUCTION,
-            }
+            config=types.GenerateContentConfig(
+                system_instruction=SALES_SYSTEM_INSTRUCTION,
+                tools=[calc_emi, check_eligibility],
+            ),
         )
+
     def _handle_purpose(self, user_message: str, session: Dict) -> str:
         """Stage 3: Capture loan purpose."""
         session["customer_data"]["purpose"] = user_message
@@ -232,64 +229,30 @@ class MasterAgent:
     def _handoff_to_sales_agent_gemini(self, user_message: str, session: Dict) -> str:
         """
         Worker Agent 1: Sales Agent (Gemini-powered)
-        Handles natural conversation, negotiation, and persuasion using Gemini.
+        Natural conversation, negotiation, and persuasion using Gemini.
         """
-
-        # Initialize sales chat if not already done
         if not self.sales_chat:
             self._init_sales_chat(session)
 
         # Send message to Gemini Sales Agent
-        reply = self.sales_chat.send_message(
-            user_message,
-            tools=[calc_emi, check_eligibility]  # pass tools per-message
-        )
+        response = self.sales_chat.send_message(user_message)
+        reply_text = response.text
 
-    # Robust text extraction
-    def _extract_text(reply_obj) -> str:
-        # 1️⃣ direct text
-        if hasattr(reply_obj, "output_text") and reply_obj.output_text:
-            return reply_obj.output_text.strip()
+        # Check if sales conversation is complete
+        if "SALES_COMPLETE" in reply_text:
+            session["sales_completed"] = True
+            self.current_stage = "get_purpose"
+            self.active_worker = None
+            self.sales_chat = None  # Clean up
+            
+            # Remove the SALES_COMPLETE marker from response
+            reply_text = reply_text.replace("SALES_COMPLETE:", "").strip()
+            reply_text += (
+                "\n\nAwesome 😎 Let's move forward with your application.\n"
+                "What is the purpose of your loan? (Education / Wedding / Home Renovation etc)"
+            )
 
-        # 2️⃣ candidate text
-        try:
-            if hasattr(reply_obj, "candidates"):
-                for candidate in reply_obj.candidates:
-                    for part in candidate.content.parts:
-                        if hasattr(part, "text") and part.text:
-                            return part.text.strip()
-        except Exception:
-            pass
-
-        # 3️⃣ tool outputs
-        if hasattr(reply_obj, "tool_outputs") and reply_obj.tool_outputs:
-            return str(reply_obj.tool_outputs).strip()
-
-        # 4️⃣ fallback
-        return ""
-
-    reply_text = _extract_text(reply)
-
-    # Fallback if no response
-    if not reply_text:
-        return "Sorry, I didn’t quite catch that, could you repeat?"
-
-    # Check if sales conversation is complete
-    if "SALES_COMPLETE" in reply_text:
-        session["sales_completed"] = True
-        self.current_stage = "get_purpose"
-        self.active_worker = None
-        self.sales_chat = None  # Clean up
-
-        # Remove the SALES_COMPLETE marker from response
-        reply_text = reply_text.replace("SALES_COMPLETE:", "").strip()
-        reply_text += (
-            "\n\nAwesome 😎 Let's move forward with your application.\n"
-            "What is the purpose of your loan? (Education / Wedding / Home Renovation etc)"
-        )
-
-    return reply_text
-
+        return reply_text
 
     def _handoff_to_underwriting_salary(self, user_message: str, session: Dict) -> str:
         """

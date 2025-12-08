@@ -1,189 +1,178 @@
-from typing import Dict, Any
-from datetime import datetime
-import random
-
+# 
 class UnderwritingAgent:
     """
-    Underwriting Agent - Credit assessment and loan eligibility
-    Fetches credit scores and evaluates loan approval criteria
+    Underwriting Agent
+    - Fetches credit score from Credit Bureau API
+    - Checks pre-approved limit from Offer Mart
+    - Evaluates eligibility based on loan amount
     """
-    
+
     def __init__(self, credit_bureau, offer_mart):
         self.agent_name = "Underwriting Agent"
         self.credit_bureau = credit_bureau
         self.offer_mart = offer_mart
-        
-    def evaluate_application(self, customer_data: Dict, loan_application: Dict) -> Dict:
+
+    def calc_emi(self, principal, rate, tenure):
+        """Calculate EMI using formula"""
+        monthly_rate = rate / (12 * 100)
+        emi = principal * monthly_rate * ((1 + monthly_rate) ** tenure) / (((1 + monthly_rate) ** tenure) - 1)
+        return round(emi, 2)
+
+    def evaluate_application(self, customer_data, loan_application):
         """
-        Main evaluation logic for loan application
+        Main evaluation logic - checks credit score and pre-approved limit
         """
-        # Fetch credit score
-        credit_score = self.credit_bureau.get_credit_score(customer_data.get("phone"))
-        
-        # Get pre-approved limit
-        pre_approved_limit = self.offer_mart.get_pre_approved_limit(customer_data)
-        
+        phone = customer_data.get("phone")
         requested_amount = loan_application.get("amount", 0)
-        
-        # Credit score check
+        tenure = loan_application.get("tenure", 36)
+
+        # ✅ FIX: Use fetch_credit_score instead of get_credit_score
+        credit_info = self.credit_bureau.fetch_credit_score(phone)
+        credit_score = credit_info.get("credit_score", 0)
+
+        print(f"\n📊 Underwriting Evaluation:")
+        print(f"   Phone: {phone}")
+        print(f"   Credit Score: {credit_score}/900")
+        print(f"   Requested Amount: ₹{requested_amount:,}")
+        print(f"   Tenure: {tenure} months")
+
+        # Check credit score eligibility
         if credit_score < 700:
             return {
                 "status": "rejected",
-                "reason": "credit_score_low",
-                "message": f"""❌ Credit Assessment Results:
-
-• Credit Score: {credit_score}/900 (Below threshold)
-• Required Score: 700+
-• Status: Application Declined
-
-We're unable to approve your loan at this time due to credit score requirements. However, we can help you improve your score!
-
-Would you like tips on improving your credit score? 📈""",
-                "credit_score": credit_score
+                "message": (
+                    f"❌ Loan application rejected.\n"
+                    f"Credit Score: {credit_score}/900 (Minimum required: 700)\n"
+                    f"💡 Tip: Improve your credit score by paying bills on time."
+                )
             }
-        
-        # Eligibility logic
+
+        # Get pre-approved offers
+        offers = self.offer_mart.get_preapproved_offers(phone)
+        pre_approved_limit = offers.get("pre_approved_limit", 0)
+        interest_rate = offers.get("interest_rate", 12.5)
+
+        print(f"   Pre-approved Limit: ₹{pre_approved_limit:,}")
+        print(f"   Interest Rate: {interest_rate}%")
+
+        # Case 1: Within pre-approved limit - Instant approval
         if requested_amount <= pre_approved_limit:
-            # Instant approval
-            return self._instant_approval(customer_data, loan_application, credit_score, pre_approved_limit)
-        
-        elif requested_amount <= (pre_approved_limit * 2):
-            # Requires salary slip
-            return self._requires_salary_slip(customer_data, loan_application, credit_score, pre_approved_limit)
-        
-        else:
-            # Exceeds limit
-            return {
-                "status": "rejected",
-                "reason": "amount_exceeded",
-                "message": f"""⚠️ Credit Assessment Results:
-
-• Credit Score: {credit_score}/900 ✅
-• Pre-approved Limit: ₹{pre_approved_limit:,}
-• Requested Amount: ₹{requested_amount:,}
-• Status: Amount Exceeds Eligibility
-
-The requested amount is above your pre-approved limit. However, you can:
-1. Apply for ₹{pre_approved_limit:,} with instant approval
-2. Provide income proof for higher amount consideration
-
-Would you like to proceed with ₹{pre_approved_limit:,}?""",
-                "credit_score": credit_score,
-                "max_eligible": pre_approved_limit
-            }
-    
-    def _instant_approval(self, customer_data: Dict, loan_application: Dict, 
-                         credit_score: int, pre_approved_limit: float) -> Dict:
-        """
-        Instant approval flow
-        """
-        requested_amount = loan_application.get("amount", 0)
-        tenure = loan_application.get("tenure", 12)
-        emi = self._calculate_emi(requested_amount, tenure)
-        
-        return {
-            "status": "approved",
-            "approval_type": "instant",
-            "message": f"""✅ LOAN APPROVED! Congratulations! 🎉
-
-📊 Credit Assessment Results:
-• Credit Score: {credit_score}/900 ✅
-• Pre-approved Limit: ₹{pre_approved_limit:,}
-• Requested Amount: ₹{requested_amount:,} ✅
-• Approval Status: INSTANT APPROVAL
-
-💰 Your Loan Details:
-• Loan Amount: ₹{requested_amount:,}
-• Tenure: {tenure} months
-• Interest Rate: 10.5% p.a.
-• Monthly EMI: ₹{emi:,}
-• Processing Fee: ₹{int(requested_amount * 0.02):,} (2%)
-
-Would you like to proceed with generating your sanction letter? Type 'Yes' to continue! 🎊""",
-            "credit_score": credit_score,
-            "emi": emi,
-            "loan_details": {
-                "amount": requested_amount,
-                "tenure": tenure,
-                "rate": 10.5,
-                "emi": emi,
-                "processing_fee": int(requested_amount * 0.02)
-            }
-        }
-    
-    def _requires_salary_slip(self, customer_data: Dict, loan_application: Dict,
-                             credit_score: int, pre_approved_limit: float) -> Dict:
-        """
-        Requires salary slip for approval
-        """
-        requested_amount = loan_application.get("amount", 0)
-        
-        return {
-            "status": "requires_documents",
-            "documents_needed": ["salary_slip"],
-            "message": f"""📋 Credit Assessment Results:
-
-• Credit Score: {credit_score}/900 ✅
-• Pre-approved Limit: ₹{pre_approved_limit:,}
-• Requested Amount: ₹{requested_amount:,}
-• Status: CONDITIONAL APPROVAL
-
-Your credit score is excellent! However, for amounts above your pre-approved limit, we need to verify your income.
-
-📎 Please upload your latest salary slip to proceed.
-
-We'll ensure your EMI doesn't exceed 50% of your monthly salary for comfortable repayment. 💼""",
-            "credit_score": credit_score
-        }
-    
-    def evaluate_with_salary(self, customer_data: Dict, loan_application: Dict, 
-                            monthly_salary: float) -> Dict:
-        """
-        Evaluate application after salary slip upload
-        """
-        requested_amount = loan_application.get("amount", 0)
-        tenure = loan_application.get("tenure", 12)
-        emi = self._calculate_emi(requested_amount, tenure)
-        
-        # Check if EMI <= 50% of salary
-        if emi <= (monthly_salary * 0.5):
+            emi = self.calc_emi(requested_amount, interest_rate, tenure)
+            
+            print(f"   ✅ Status: INSTANT APPROVAL")
+            print(f"   EMI: ₹{emi:,}")
+            
             return {
                 "status": "approved",
-                "approval_type": "conditional",
-                "message": f"""✅ LOAN APPROVED! 🎉
-
-📊 Final Assessment:
-• Monthly Salary: ₹{monthly_salary:,}
-• Proposed EMI: ₹{emi:,}
-• EMI to Income Ratio: {(emi/monthly_salary*100):.1f}%
-• Status: APPROVED ✅
-
-Your application meets all our criteria! Would you like to proceed with the sanction letter?""",
+                "rate": interest_rate,
                 "emi": emi,
-                "salary": monthly_salary
+                "message": (
+                    f"🎉 Loan Approved!\n\n"
+                    f"💰 Amount: ₹{requested_amount:,}\n"
+                    f"📅 Tenure: {tenure} months\n"
+                    f"📊 Interest Rate: {interest_rate}% p.a.\n"
+                    f"💳 EMI: ₹{emi:,}/month\n"
+                    f"⭐ Credit Score: {credit_score}/900\n\n"
+                    f"✅ Your loan is within pre-approved limit!"
+                )
             }
+
+        # Case 2: Up to 2x pre-approved limit - Requires salary verification
+        elif requested_amount <= (pre_approved_limit * 2):
+            print(f"   📄 Status: REQUIRES SALARY VERIFICATION")
+            
+            return {
+                "status": "requires_documents",
+                "rate": interest_rate,
+                "message": (
+                    f"📋 Additional verification required.\n\n"
+                    f"💰 Requested: ₹{requested_amount:,}\n"
+                    f"📊 Pre-approved: ₹{pre_approved_limit:,}\n"
+                    f"⭐ Credit Score: {credit_score}/900\n\n"
+                    f"Your requested amount exceeds pre-approved limit.\n"
+                    f"Please upload your salary slip for verification."
+                )
+            }
+
+        # Case 3: More than 2x pre-approved limit - Rejected
         else:
+            print(f"   ❌ Status: REJECTED (Exceeds 2x limit)")
+            
             return {
                 "status": "rejected",
-                "reason": "emi_exceeds_income",
-                "message": f"""❌ Assessment Update:
-
-• Monthly Salary: ₹{monthly_salary:,}
-• Proposed EMI: ₹{emi:,}
-• EMI to Income Ratio: {(emi/monthly_salary*100):.1f}%
-• Maximum Allowed: 50%
-
-The EMI exceeds our policy limit. We can offer:
-• Lower loan amount: ₹{int(monthly_salary * 0.5 * tenure / 1.1):,}
-• Extended tenure to reduce EMI
-
-Would you like to explore these options?""",
-                "emi": emi,
-                "max_eligible_amount": int(monthly_salary * 0.5 * tenure / 1.1)
+                "message": (
+                    f"❌ Loan amount too high.\n\n"
+                    f"💰 Requested: ₹{requested_amount:,}\n"
+                    f"📊 Pre-approved: ₹{pre_approved_limit:,}\n"
+                    f"📈 Maximum eligible: ₹{pre_approved_limit * 2:,}\n\n"
+                    f"💡 Tip: Try requesting ₹{pre_approved_limit:,} or less for instant approval."
+                )
             }
-    
-    def _calculate_emi(self, principal: float, tenure: int, rate: float = 10.5) -> int:
-        """Calculate EMI"""
-        monthly_rate = rate / 12 / 100
-        emi = principal * monthly_rate * (1 + monthly_rate) ** tenure / ((1 + monthly_rate) ** tenure - 1)
-        return int(emi)
+
+    def evaluate_with_salary(self, customer_data, loan_application, monthly_salary):
+        """
+        Re-evaluate application with salary information
+        EMI should not exceed 50% of monthly salary
+        """
+        phone = customer_data.get("phone")
+        requested_amount = loan_application.get("amount", 0)
+        tenure = loan_application.get("tenure", 36)
+
+        # ✅ FIX: Use fetch_credit_score instead of get_credit_score
+        credit_info = self.credit_bureau.fetch_credit_score(phone)
+        credit_score = credit_info.get("credit_score", 0)
+
+        # Get interest rate
+        offers = self.offer_mart.get_preapproved_offers(phone)
+        interest_rate = offers.get("interest_rate", 12.5)
+
+        # Calculate EMI
+        emi = self.calc_emi(requested_amount, interest_rate, tenure)
+
+        print(f"\n📊 Salary Verification:")
+        print(f"   Monthly Salary: ₹{monthly_salary:,}")
+        print(f"   Calculated EMI: ₹{emi:,}")
+        print(f"   EMI/Salary Ratio: {(emi/monthly_salary)*100:.1f}%")
+
+        # Check if EMI is within 50% of salary
+        max_allowed_emi = monthly_salary * 0.50
+
+        if emi <= max_allowed_emi:
+            print(f"   ✅ Status: APPROVED (EMI within limits)")
+            
+            return {
+                "status": "approved",
+                "rate": interest_rate,
+                "emi": emi,
+                "message": (
+                    f"🎉 Loan Approved!\n\n"
+                    f"💰 Amount: ₹{requested_amount:,}\n"
+                    f"📅 Tenure: {tenure} months\n"
+                    f"📊 Interest Rate: {interest_rate}% p.a.\n"
+                    f"💳 EMI: ₹{emi:,}/month\n"
+                    f"💵 Monthly Salary: ₹{monthly_salary:,}\n"
+                    f"📈 EMI/Salary: {(emi/monthly_salary)*100:.1f}%\n"
+                    f"⭐ Credit Score: {credit_score}/900\n\n"
+                    f"✅ Your EMI is within affordable limits!"
+                )
+            }
+        else:
+            print(f"   ❌ Status: REJECTED (EMI too high)")
+            
+            # Calculate maximum affordable loan
+            max_emi = monthly_salary * 0.50
+            monthly_rate = interest_rate / (12 * 100)
+            max_loan = max_emi * (((1 + monthly_rate) ** tenure) - 1) / (monthly_rate * ((1 + monthly_rate) ** tenure))
+            
+            return {
+                "status": "rejected",
+                "message": (
+                    f"❌ Loan rejected - EMI too high.\n\n"
+                    f"💰 Requested: ₹{requested_amount:,}\n"
+                    f"💳 EMI would be: ₹{emi:,}/month\n"
+                    f"💵 Monthly Salary: ₹{monthly_salary:,}\n"
+                    f"📉 EMI/Salary: {(emi/monthly_salary)*100:.1f}% (Max allowed: 50%)\n\n"
+                    f"💡 Maximum affordable loan: ₹{int(max_loan):,}\n"
+                    f"   (EMI: ₹{int(max_emi):,}/month)"
+                )
+            }
