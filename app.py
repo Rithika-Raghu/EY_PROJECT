@@ -15,7 +15,7 @@ from database.models import db, User
 from database.vector_store import ChromaDBStore
 
 from backend.security import security, user_datastore
-from backend.auth import Signup, Login
+from backend.auth import Signup, Login, SendOTP
 
 
 app = Flask(__name__)
@@ -55,6 +55,7 @@ api = Api(app)
 # Add resources OUTSIDE app_context
 api.add_resource(Signup, '/api/signup')
 api.add_resource(Login, '/api/login')
+api.add_resource(SendOTP, '/api/send-otp')
 
 # ✅ Initialize MasterAgent (which creates loan tables in loan_system.db)
 print("🔄 Initializing Master Agent and Loan Database...")

@@ -72,6 +72,15 @@ class DatabaseService:
                 FOREIGN KEY(user_id) REFERENCES users(id)
             )
         ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS otp_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                otp_code TEXT NOT NULL,
+                created_at TEXT
+            )
+        ''')
         
         self.conn.commit()
         
@@ -302,6 +311,30 @@ class DatabaseService:
         cursor.execute('SELECT * FROM users WHERE email = ?', (email,))
         row = cursor.fetchone()
         return dict(row) if row else None
+    
+    def get_otp_verification(self, email):
+        """Retrieve OTP verification record by email"""
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT * FROM otp_verifications WHERE email = ?', (email,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    
+    def create_otp_verification(self, email, otp_code):
+        """Create or update OTP verification record"""
+        cursor = self.conn.cursor()
+        existing = self.get_otp_verification(email)
+        if existing:
+            cursor.execute('''
+                UPDATE otp_verifications
+                SET otp_code = ?, created_at = ?
+                WHERE email = ?
+            ''', (otp_code, datetime.now().isoformat(), email))
+        else:
+            cursor.execute('''
+                INSERT INTO otp_verifications (email, otp_code, created_at)
+                VALUES (?, ?, ?)
+            ''', (email, otp_code, datetime.now().isoformat()))
+        self.conn.commit()
     
     def verify_password(self, stored_password, provided_password):
         """Verify password hash"""

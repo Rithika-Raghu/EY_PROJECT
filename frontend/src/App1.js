@@ -71,6 +71,7 @@ const ThemeContext = createContext({
   toggleTheme: () => {}
 });
 
+
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
     if (typeof window === "undefined") return "light";
@@ -80,6 +81,8 @@ export const ThemeProvider = ({ children }) => {
       ? "dark"
       : "light";
   });
+
+
 
   useEffect(() => {
     const root = document.documentElement;
@@ -1422,8 +1425,10 @@ export function Signup() {
     const formData = new FormData(e.target);
     const userData = {
       username: formData.get('fullname'),
+      mobile: formData.get('mobile'),
       email: formData.get('email'),
-      password: formData.get('password')
+      password: formData.get('password'), 
+      otp: formData.get('otp')
     };
 
     try {
@@ -1435,6 +1440,22 @@ export function Signup() {
       console.error('Signup error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+  const [userEmail, setUserEmail] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const generateOTP = async () => {
+    const res = await fetch('http://localhost:5000/api/send-otp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email: userEmail })
+    });
+    console.log(res);
+    if (res.ok) {
+      setOtpSent(true);
+      alert('OTP sent to your email');
     }
   };
 
@@ -1471,6 +1492,22 @@ export function Signup() {
           </div>
         </div>
 
+        <div>
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+            Phone No.
+          </label>
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              required
+              name="mobile"
+              type="text"
+              className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none transition-all"
+              placeholder="Enter Phone No."
+            />
+          </div>
+        </div>
+
         {/* Email */}
         <div>
           <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
@@ -1482,8 +1519,30 @@ export function Signup() {
               required
               name="email"
               type="email"
+              value={userEmail}
+              onChange={(e) => setUserEmail(e.target.value)}
               className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none transition-all"
               placeholder="you@example.com"
+            />
+            <button onClick={generateOTP} type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+            Get OTP
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+            OTP
+          </label>
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              disabled={!otpSent}
+              required
+              name="otp"
+              type="text"
+              className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none transition-all"
+              placeholder="Enter OTP"
             />
           </div>
         </div>
@@ -1497,6 +1556,7 @@ export function Signup() {
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               required
+              disabled={!otpSent}
               name="password"
               type={showPassword ? "text" : "password"}
               className="w-full pl-12 pr-12 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none transition-all"
@@ -1517,22 +1577,26 @@ export function Signup() {
         </div>
 
         {/* Submit Button */}
-        <motion.button
-          type="submit"
-          disabled={loading}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <span>Creating account...</span>
-          ) : (
-            <>
-              Create Account
-              <ArrowRight className="w-5 h-5" />
-            </>
-          )}
-        </motion.button>
+        {otpSent && (
+          <>
+          <motion.button
+            type="submit"
+            disabled={loading}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <span>Creating account...</span>
+            ) : (
+              <>
+                Create Account
+                <ArrowRight className="w-5 h-5" />
+              </>
+            )}
+          </motion.button>
+        </>)}
+
       </form>
 
       {/* Footer */}
